@@ -3,6 +3,7 @@ plugins {
     id 'groovy'
     id 'com.gradle.plugin-publish' version '0.9.4'
     id 'com.palantir.git-version' version '0.3.0'
+    id 'maven'
 }
 
 project.version = gitVersion()
@@ -13,6 +14,16 @@ targetCompatibility = '1.7'
 
 repositories {
     jcenter()
+}
+
+
+
+uploadArchives {
+    repositories {
+	maven {
+	     url uri('C:/mvn_repo')
+	} 
+    }
 }
 
 dependencies {
@@ -30,10 +41,10 @@ pluginBundle {
     website = 'https://github.com/traff/gradle-conda-envs'
     vcsUrl = 'https://github.com/traff/gradle-conda-envs'
     description = 'Gradle plugin to install Miniconda and create Python conda environments'
-    tags = ['python', 'miniconda']
+    tags = ['python', 'miniconda', 'conda']
     plugins {
         condaEnvsPlugin {
-            id = 'com.jetbrains.python.conda-envs'
+            id = 'com.jetbrains.python.condaenvs'
             displayName = 'Gradle Conda Envs plugin'
         }
     }

@@ -113,12 +113,12 @@ class CondaEnvsPlugin implements Plugin<Project> {
 
         }
     }
-}
 
-def condaCreate(project, name, version, cl) {
+   def condaCreate(project, name, version, cl) {
     def lst = cl()
 
     return task("conda create $name") {
+	def miniconda = project.extensions.getByType(CondaEnvsExtension.class)
 
         def env = file("$miniconda.buildEnvironmentDirectory/$name")
         def is64 = name.endsWith("_64")
@@ -151,4 +151,6 @@ def condaCreate(project, name, version, cl) {
             }
         }
     }
+   }
 }
+
