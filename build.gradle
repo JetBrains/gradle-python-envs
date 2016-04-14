@@ -1,0 +1,40 @@
+plugins {
+    id 'idea'
+    id 'groovy'
+    id 'com.gradle.plugin-publish' version '0.9.4'
+    id 'com.palantir.git-version' version '0.3.0'
+}
+
+project.version = gitVersion()
+project.group = 'com.jetbrains.python'
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    compile gradleApi()
+    testCompile('com.netflix.nebula:nebula-test:4.0.0') {
+        exclude group: 'org.codehaus.groovy'
+    }
+}
+
+task sourceJar(type: Jar) {
+    from sourceSets.main.allSource
+}
+
+pluginBundle {
+    website = 'https://github.com/traff/gradle-conda-envs'
+    vcsUrl = 'https://github.com/traff/gradle-conda-envs'
+    description = 'Gradle plugin to install Miniconda and create Python conda environments'
+    tags = ['python', 'miniconda']
+    plugins {
+        condaEnvsPlugin {
+            id = 'com.jetbrains.python.conda-envs'
+            displayName = 'Gradle Conda Envs plugin'
+        }
+    }
+}
