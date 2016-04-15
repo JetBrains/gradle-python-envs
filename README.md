@@ -1,4 +1,4 @@
-Gradle Conda Envs Plugin 
+Gradle Python Envs Plugin
 ========================
 
 Gradle plugin to create conda envs.

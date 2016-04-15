@@ -20,17 +20,15 @@ repositories {
 
 uploadArchives {
     repositories {
-	maven {
-	     url uri('C:/mvn_repo')
-	} 
+        maven {
+            url uri('C:/mvn_repo')
+        }
     }
 }
 
 dependencies {
     compile gradleApi()
-    testCompile('com.netflix.nebula:nebula-test:4.0.0') {
-        exclude group: 'org.codehaus.groovy'
-    }
+    compile maven()
 }
 
 task sourceJar(type: Jar) {
@@ -38,14 +36,14 @@ task sourceJar(type: Jar) {
 }
 
 pluginBundle {
-    website = 'https://github.com/traff/gradle-conda-envs'
-    vcsUrl = 'https://github.com/traff/gradle-conda-envs'
-    description = 'Gradle plugin to install Miniconda and create Python conda environments'
+    website = 'https://github.com/traff/gradle-python-envs'
+    vcsUrl = 'https://github.com/traff/gradle-python-envs'
+    description = 'Gradle plugin to install different Python environments'
     tags = ['python', 'miniconda', 'conda']
     plugins {
         condaEnvsPlugin {
-            id = 'com.jetbrains.python.condaenvs'
-            displayName = 'Gradle Conda Envs plugin'
+            id = 'com.jetbrains.python.envs'
+            displayName = 'Gradle Python Envs plugin'
         }
     }
 }

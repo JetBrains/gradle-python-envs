@@ -1,4 +1,5 @@
-package com.jetbrains.python.condaenvs
+package com.jetbrains.python.envs
+
 
 /**
  * Project extension to configure Python build environment.

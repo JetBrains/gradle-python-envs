@@ -1,4 +1,4 @@
-package com.jetbrains.python.condaenvs
+package com.jetbrains.python.envs
 
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Plugin
@@ -6,7 +6,7 @@ import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
 import org.gradle.util.VersionNumber
 
-class CondaEnvsPlugin implements Plugin<Project> {
+class PythonEnvsPlugin implements Plugin<Project> {
     def os = System.getProperty('os.name').replaceAll(' ', '')
 
     def resolveMiniconda(project, is64, myExt) {
@@ -73,6 +73,44 @@ class CondaEnvsPlugin implements Plugin<Project> {
     void apply(Project project) {
         def myExt = project.extensions.create("miniconda", CondaEnvsExtension.class)
 
+        project.ext.condaCreate = { prj, name, version, cl ->
+            def lst = cl()
+
+            return prj.tasks.create("conda create $name") {
+                def miniconda = prj.extensions.getByType(CondaEnvsExtension.class)
+
+                def env = prj.file("$miniconda.buildEnvironmentDirectory/$name")
+                def is64 = name.endsWith("_64")
+
+                if (is64) {
+                    dependsOn "bootstrapPython64"
+                } else {
+                    dependsOn "bootstrapPython32"
+                }
+
+                inputs.property("packages", lst)
+                outputs.dir(env)
+
+                onlyIf {
+                    !env.exists()
+                }
+
+                doLast {
+                    project.exec {
+                        executable is64 ? miniconda.minicondaExecutable64 : miniconda.minicondaExecutable32
+                        args "create", "-p", env, "-y", "-f", "python=$version"
+                        args miniconda.packages
+                    }
+
+                    lst.collect { e -> [prj.file("$miniconda.buildEnvironmentDirectory/$name/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/pip.exe' : 'bin/pip'}"), "install"] + e }.each {
+                        cmd ->
+                            prj.exec {
+                                commandLine cmd.flatten()
+                            }
+                    }
+                }
+            }
+        }
 
         project.repositories {
             ivy {
@@ -113,44 +151,5 @@ class CondaEnvsPlugin implements Plugin<Project> {
 
         }
     }
-
-   def condaCreate(project, name, version, cl) {
-    def lst = cl()
-
-    return task("conda create $name") {
-	def miniconda = project.extensions.getByType(CondaEnvsExtension.class)
-
-        def env = file("$miniconda.buildEnvironmentDirectory/$name")
-        def is64 = name.endsWith("_64")
-
-        if (is64) {
-            dependsOn "bootstrapPython64"
-        } else {
-            dependsOn "bootstrapPython32"
-        }
-
-        inputs.property("packages", lst)
-        outputs.dir(env)
-
-        onlyIf {
-            !env.exists()
-        }
-
-        doLast {
-            project.exec {
-                executable is64 ? miniconda.minicondaExecutable64 : miniconda.minicondaExecutable32
-                args "create", "-p", env, "-y", "-f", "python=$version"
-                args miniconda.packages
-            }
-
-            lst.collect { e -> [file("$miniconda.buildEnvironmentDirectory/$name/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/pip.exe' : 'bin/pip'}"), "install"] + e }.each {
-                cmd ->
-                    project.exec {
-                        commandLine cmd.flatten()
-                    }
-            }
-        }
-    }
-   }
 }
 
