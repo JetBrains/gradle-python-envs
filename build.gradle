@@ -21,14 +21,13 @@ repositories {
 uploadArchives {
     repositories {
         maven {
-            url uri('C:/mvn_repo')
+            url uri('../mvn_repo')
         }
     }
 }
 
 dependencies {
     compile gradleApi()
-    compile maven()
 }
 
 task sourceJar(type: Jar) {
@@ -41,7 +40,7 @@ pluginBundle {
     description = 'Gradle plugin to install different Python environments'
     tags = ['python', 'miniconda', 'conda']
     plugins {
-        condaEnvsPlugin {
+        pythonEnvsPlugin {
             id = 'com.jetbrains.python.envs'
             displayName = 'Gradle Python Envs plugin'
         }

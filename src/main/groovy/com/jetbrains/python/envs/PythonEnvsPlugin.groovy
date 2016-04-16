@@ -8,6 +8,12 @@ import org.gradle.util.VersionNumber
 
 class PythonEnvsPlugin implements Plugin<Project> {
     def os = System.getProperty('os.name').replaceAll(' ', '')
+    
+    def resolveJython(project) {
+        project.dependencies {
+            jython group: 'org.python', name:'jython-installer', version: '2.7.1b3'
+        }
+    }
 
     def resolveMiniconda(project, is64, myExt) {
         def myExtension = "sh"
@@ -68,16 +74,35 @@ class PythonEnvsPlugin implements Plugin<Project> {
 //            }
         }
     }
+    
+    def createBootstrapJython(project, jythonBootstrapDir) {
+        def conf = project.configurations.jython
+        
+        
+        
+        project.tasks.create(name: 'bootstrapJython') {
+            outputs.dir(jythonBootstrapDir)
+            
+            print("Hi")
+            
+            project.javaexec {
+                main = '-jar'
+                args conf.singleFile, '-s', '-d', jythonBootstrapDir, '-t', 'standard'
+            }
+        }
+    } 
 
     @Override
     void apply(Project project) {
-        def myExt = project.extensions.create("miniconda", CondaEnvsExtension.class)
+        def envs = project.extensions.create("envs", PythonEnvsExtension.class)
+
+
 
         project.ext.condaCreate = { prj, name, version, cl ->
             def lst = cl()
 
             return prj.tasks.create("conda create $name") {
-                def miniconda = prj.extensions.getByType(CondaEnvsExtension.class)
+                def miniconda = prj.extensions.getByType(PythonEnvsExtension.class)
 
                 def env = prj.file("$miniconda.buildEnvironmentDirectory/$name")
                 def is64 = name.endsWith("_64")
@@ -119,35 +144,56 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     artifact "[organisation]/[module]-[revision]-[classifier].[ext]"
                 }
             }
+            mavenCentral()
         }
 
 
         project.configurations {
             minicondaInstaller32
             minicondaInstaller64
+            jython
         }
 
         project.afterEvaluate {
             def conf32 = project.configurations.minicondaInstaller32
             conf32.incoming.beforeResolve {
-                resolveMiniconda(project, false, myExt)
+                resolveMiniconda(project, false, envs)
             }
 
             def conf64 = project.configurations.minicondaInstaller64
             conf64.incoming.beforeResolve {
-                resolveMiniconda(project, true, myExt)
+                resolveMiniconda(project, true, envs)
+            }
+            
+            def jython = project.configurations.jython
+            
+            jython.incoming.beforeResolve {
+                resolveJython(project)
             }
 
-            def minicondaBootstrapVersionDir = new File(myExt.bootstrapDirectory, myExt.minicondaVersion)
+            def minicondaBootstrapVersionDir = new File(envs.bootstrapDirectory, envs.minicondaVersion)
 
             createBootstrapPython(project, true, minicondaBootstrapVersionDir)
             createBootstrapPython(project, false, minicondaBootstrapVersionDir)
+            
+            createBootstrapJython(project, new File(envs.bootstrapDirectory, "jython"))
 
 
+            envs.minicondaExecutable32 = new File("${minicondaBootstrapVersionDir}_32/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
-            myExt.minicondaExecutable32 = new File("${minicondaBootstrapVersionDir}_32/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
+            envs.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
-            myExt.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
+            project.tasks.create(name:'build_jython_envs', dependsOn: 'bootstrapJython') {
+                onlyIf { !envs.jythonEnvs.empty }
+                
+//                envs.jythonEnvs.each {
+//                    project.
+//                }
+            }
+
+            project.tasks.create(name:'build_envs', dependsOn: 'build_jython_envs') {
+
+            }
 
         }
     }
