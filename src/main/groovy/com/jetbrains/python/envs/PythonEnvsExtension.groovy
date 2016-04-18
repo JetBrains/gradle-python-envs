@@ -7,25 +7,26 @@ package com.jetbrains.python.envs
  */
 class PythonEnvsExtension {
     File bootstrapDirectory
-    File buildEnvironmentDirectory
+    File envsDirectory
     String minicondaVersion
     String minicondaExecutable32
     String minicondaExecutable64
     List<String> packages
     List<JythonEnv> jythonEnvs = []
     
-    void jython(final String envName) {
-        jythonEnvs << new JythonEnv(envName)
+    void jython(final String envName, final List<String> packages) {
+        jythonEnvs << new JythonEnv(envName, packages)
     } 
-    
 }
 
 class JythonEnv {
-    JythonEnv(String name) {
-        this.name = name
-    }
     String name
+    List<String> packages
     
+    JythonEnv(String name, List<String> packages) {
+        this.name = name
+        this.packages = packages;
+    }
 }
 
 

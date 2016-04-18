@@ -8,10 +8,10 @@ import org.gradle.util.VersionNumber
 
 class PythonEnvsPlugin implements Plugin<Project> {
     def os = System.getProperty('os.name').replaceAll(' ', '')
-    
+
     def resolveJython(project) {
         project.dependencies {
-            jython group: 'org.python', name:'jython-installer', version: '2.7.1b3'
+            jython group: 'org.python', name: 'jython-installer', version: '2.7.1b3'
         }
     }
 
@@ -52,9 +52,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
 
     def createBootstrapPython(project, is64, minicondaBootstrapVersionDir) {
-        def conf = is64 ? project.configurations.minicondaInstaller64 : project.configurations.minicondaInstaller32
-
         project.task([type: Exec], "bootstrapPython" + (is64 ? "64" : "32")) {
+            def conf = is64 ? project.configurations.minicondaInstaller64 : project.configurations.minicondaInstaller32
+
             def installDir = "$minicondaBootstrapVersionDir${is64 ? '_64' : '_32'}"
 
             outputs.dir(installDir)
@@ -62,40 +62,48 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 !(new File(installDir).exists())
             }
 
-            if (os.contains("Windows")) {
-                commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
-            } else {
-                commandLine "bash", conf.singleFile, "-b", "-p", installDir
-            }
+            doLast {
+                if (os.contains("Windows")) {
+                    commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
+                } else {
+                    commandLine "bash", conf.singleFile, "-b", "-p", installDir
+                }
 //            doFirst {
 //                if (!myExt.bootstrapDirectory.exists()) {
 //                    myExt.bootstrapDirectory.mkdir()
 //                }
 //            }
-        }
-    }
-    
-    def createBootstrapJython(project, jythonBootstrapDir) {
-        def conf = project.configurations.jython
-        
-        
-        
-        project.tasks.create(name: 'bootstrapJython') {
-            outputs.dir(jythonBootstrapDir)
-            
-            print("Hi")
-            
-            project.javaexec {
-                main = '-jar'
-                args conf.singleFile, '-s', '-d', jythonBootstrapDir, '-t', 'standard'
             }
         }
-    } 
+    }
+
+    def createBootstrapJython(project, jythonBootstrapDir) {
+        project.tasks.create(name: 'bootstrapJython') {
+            def conf = project.configurations.jython
+
+            outputs.dir(jythonBootstrapDir)
+
+            onlyIf {
+                !jythonBootstrapDir.exists()
+            }
+
+            doLast {
+                project.javaexec {
+                    main = '-jar'
+                    args conf.singleFile, '-s', '-d', jythonBootstrapDir, '-t', 'standard'
+                }
+                
+                project.exec {
+                    executable new File(jythonBootstrapDir, "bin/pip")
+                    args "install", "virtualenv"
+                }
+            }
+        }
+    }
 
     @Override
     void apply(Project project) {
         def envs = project.extensions.create("envs", PythonEnvsExtension.class)
-
 
 
         project.ext.condaCreate = { prj, name, version, cl ->
@@ -104,7 +112,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             return prj.tasks.create("conda create $name") {
                 def miniconda = prj.extensions.getByType(PythonEnvsExtension.class)
 
-                def env = prj.file("$miniconda.buildEnvironmentDirectory/$name")
+                def env = prj.file("$miniconda.envsDirectory/$name")
                 def is64 = name.endsWith("_64")
 
                 if (is64) {
@@ -127,12 +135,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         args miniconda.packages
                     }
 
-                    lst.collect { e -> [prj.file("$miniconda.buildEnvironmentDirectory/$name/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/pip.exe' : 'bin/pip'}"), "install"] + e }.each {
-                        cmd ->
-                            prj.exec {
-                                commandLine cmd.flatten()
-                            }
-                    }
+                    pipInstall(prj, "$miniconda.envsDirectory/$name", lst)
                 }
             }
         }
@@ -164,9 +167,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
             conf64.incoming.beforeResolve {
                 resolveMiniconda(project, true, envs)
             }
-            
+
             def jython = project.configurations.jython
-            
+
             jython.incoming.beforeResolve {
                 resolveJython(project)
             }
@@ -175,7 +178,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             createBootstrapPython(project, true, minicondaBootstrapVersionDir)
             createBootstrapPython(project, false, minicondaBootstrapVersionDir)
-            
+
             createBootstrapJython(project, new File(envs.bootstrapDirectory, "jython"))
 
 
@@ -183,18 +186,34 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             envs.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
-            project.tasks.create(name:'build_jython_envs', dependsOn: 'bootstrapJython') {
+            project.tasks.create(name: 'build_jython_envs', dependsOn: 'bootstrapJython') {
                 onlyIf { !envs.jythonEnvs.empty }
                 
-//                envs.jythonEnvs.each {
-//                    project.
-//                }
+                doLast {
+                    envs.jythonEnvs.each { e -> 
+                        project.exec {
+                            executable new File(envs.bootstrapDirectory, "jython/bin/virtualenv")
+                            args new File(envs.envsDirectory, e.name)
+                        }
+
+                        pipInstall(project, new File(envs.bootstrapDirectory, "jython").getPath(), e.packages)
+                    }
+                }
             }
 
-            project.tasks.create(name:'build_envs', dependsOn: 'build_jython_envs') {
+            project.tasks.create(name: 'build_envs', dependsOn: 'build_jython_envs') {
 
             }
 
+        }
+    }
+
+    private List pipInstall(project, envDir, packages) {
+        packages.collect { e -> [project.file("$envDir/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/pip.exe' : 'bin/pip'}"), "install"] + e }.each {
+            cmd ->
+                project.exec {
+                    commandLine cmd.flatten()
+                }
         }
     }
 }
