@@ -5,12 +5,13 @@ Gradle plugin to create conda envs.
 
 Conda envs are python virtual environments based on [Miniconda](http://conda.pydata.org/miniconda.html).
 
-This base on [gradle-miniconda-plugin](https://github.com/palantir/gradle-miniconda-plugin),
-but also provides:
+This plugin is based on [gradle-miniconda-plugin](https://github.com/palantir/gradle-miniconda-plugin),
+but in addition to downloading Miniconda it provides:
 
-1. a convenient DSL to specify target Python environments 
-2. creating Jython enviroments
-3. working with both 32 and 64 bit versions of Miniconda
+1. Silent Miniconda installation
+2. A convenient DSL to specify target Python environments 
+3. Creating Jython enviroments
+4. Working with both 32 and 64 bit versions of Miniconda
 
 Usage
 -----
