@@ -5,33 +5,43 @@ Gradle plugin to create conda envs.
 
 Conda envs are python virtual environments based on [Miniconda](http://conda.pydata.org/miniconda.html).
 
-This plugin is an extended and modified fork of [gradle-miniconda-plugin](https://github.com/palantir/gradle-miniconda-plugin)
+This base on [gradle-miniconda-plugin](https://github.com/palantir/gradle-miniconda-plugin),
+but also provides:
+
+1. a convenient DSL to specify target Python environments 
+2. creating Jython enviroments
+3. working with both 32 and 64 bit versions of Miniconda
 
 Usage
 -----
                                                 
 Apply the plugin to your project following
-[`https://plugins.gradle.org/plugin/com.palantir.python.miniconda`](https://plugins.gradle.org/plugin/com.palantir.python.miniconda),
+[`https://plugins.gradle.org/plugin/com.jetbrains.python.envs`](https://plugins.gradle.org/plugin/com.jetbrains.python.envs),
 and configure the associated extension:
 
 ```gradle
-miniconda {
-    bootstrapDirectoryPrefix = new File(System.getProperty('user.home'), '.miniconda')
-    buildEnvironmentDirectory = new File(buildDir, 'python')
-    minicondaVersion = '3.10.1'
-    packages = ['ipython-notebook']
+envs {
+  bootstrapDirectory = new File(buildDir, 'pythons')
+  envsDirectory = new File(buildDir, 'envs')
+  minicondaVersion = 'latest'
+  packages = ["pip", "setuptools"]
+
+  conda "django19", "2.7", ["django==1.9"]
+
+  conda "python34_64", "3.4", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
+
+  jython "jython25", []
 }
 ```
 
-Then invoke the `setupPython` task and use the resulting installation directory from `Exec` tasks:
+Then invoke the `build_envs` task. 
 
-```gradle
-task launchNotebook(type: Exec) {
-    dependsOn 'setupPython'
-    executable "${miniconda.buildEnvironmentDirectory}/bin/ipython"
-    args 'notebook'
-}
-```
+This will download and install the latest versions of Miniconda both for 32 and 64 bits and Jython to 
+`buildDir/pythons`.
+
+Then it will create `django19` and `python34_64` conda envs and `jython25` Jython env in `buildDir/envs`,
+installing all the libraries listed correspondingly.
+
 
 License
 -------
