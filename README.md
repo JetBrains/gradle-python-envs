@@ -10,7 +10,7 @@ but in addition to downloading Miniconda it provides:
 
 1. Silent Miniconda installation
 2. A convenient DSL to specify target Python environments 
-3. Creating Jython enviroments
+3. Creating Jython environments
 4. Working with both 32 and 64 bit versions of Miniconda
 
 Usage
