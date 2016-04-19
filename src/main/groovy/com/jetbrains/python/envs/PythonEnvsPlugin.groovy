@@ -52,7 +52,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
 
     def createBootstrapPython(project, is64, minicondaBootstrapVersionDir) {
-        project.task([type: Exec], "bootstrapPython" + (is64 ? "64" : "32")) {
+        project.task("bootstrapPython" + (is64 ? "64" : "32")) {
             def conf = is64 ? project.configurations.minicondaInstaller64 : project.configurations.minicondaInstaller32
 
             def installDir = "$minicondaBootstrapVersionDir${is64 ? '_64' : '_32'}"
@@ -63,10 +63,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             doLast {
-                if (os.contains("Windows")) {
-                    commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
-                } else {
-                    commandLine "bash", conf.singleFile, "-b", "-p", installDir
+                project.exec {
+                    if (os.contains("Windows")) {
+                        commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
+                    } else {
+                        commandLine "bash", conf.singleFile, "-b", "-p", installDir
+                    }
                 }
 //            doFirst {
 //                if (!myExt.bootstrapDirectory.exists()) {
@@ -92,7 +94,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     main = '-jar'
                     args conf.singleFile, '-s', '-d', jythonBootstrapDir, '-t', 'standard'
                 }
-                
+
                 project.exec {
                     executable new File(jythonBootstrapDir, "bin/pip")
                     args "install", "virtualenv"
@@ -105,40 +107,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
     void apply(Project project) {
         def envs = project.extensions.create("envs", PythonEnvsExtension.class)
 
-
-        project.ext.condaCreate = { prj, name, version, cl ->
-            def lst = cl()
-
-            return prj.tasks.create("conda create $name") {
-                def miniconda = prj.extensions.getByType(PythonEnvsExtension.class)
-
-                def env = prj.file("$miniconda.envsDirectory/$name")
-                def is64 = name.endsWith("_64")
-
-                if (is64) {
-                    dependsOn "bootstrapPython64"
-                } else {
-                    dependsOn "bootstrapPython32"
-                }
-
-                inputs.property("packages", lst)
-                outputs.dir(env)
-
-                onlyIf {
-                    !env.exists()
-                }
-
-                doLast {
-                    project.exec {
-                        executable is64 ? miniconda.minicondaExecutable64 : miniconda.minicondaExecutable32
-                        args "create", "-p", env, "-y", "-f", "python=$version"
-                        args miniconda.packages
-                    }
-
-                    pipInstall(prj, "$miniconda.envsDirectory/$name", lst)
-                }
-            }
-        }
 
         project.repositories {
             ivy {
@@ -186,11 +154,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             envs.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
-            project.tasks.create(name: 'build_jython_envs', dependsOn: 'bootstrapJython') {
+            def jython_envs_task = project.tasks.create(name: 'build_jython_envs', dependsOn: 'bootstrapJython') {
                 onlyIf { !envs.jythonEnvs.empty }
-                
+
                 doLast {
-                    envs.jythonEnvs.each { e -> 
+                    envs.jythonEnvs.each { e ->
                         project.exec {
                             executable new File(envs.bootstrapDirectory, "jython/bin/virtualenv")
                             args new File(envs.envsDirectory, e.name)
@@ -201,8 +169,57 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
 
-            project.tasks.create(name: 'build_envs', dependsOn: 'build_jython_envs') {
+            def conda_envs_task = project.tasks.create(name: 'build_conda_envs') {
+                onlyIf { !envs.condaEnvs.empty }
 
+                envs.condaEnvs.each { e ->
+
+                    def name = e.name
+
+                    dependsOn project.tasks.create("Create conda env '$name'") {
+                        def env = project.file("$envs.envsDirectory/$name")
+                        def is64 = name.endsWith("_64")
+
+                        if (is64) {
+                            dependsOn "bootstrapPython64"
+                        } else {
+                            dependsOn "bootstrapPython32"
+                        }
+
+                        inputs.property("packages", e.packages)
+                        outputs.dir(env)
+
+                        onlyIf {
+                            !env.exists()
+                        }
+
+                        doLast {
+                            project.exec {
+                                executable is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+                                args "create", "-p", env, "-y", "-f", "python=$e.version"
+                                args envs.packages
+                            }
+
+                            pipInstall(project, "$envs.envsDirectory/$name", e.packages)
+                        }
+                    }
+                }
+            }
+
+            def create_files_task = project.tasks.create(name: 'create_files') {
+                onlyIf { !envs.files.empty }
+
+                envs.files.each { e ->
+                    def f = new File(envs.envsDirectory, e.path)
+                    
+                    doLast {
+                        f.write(e.content)
+                    }
+                }
+            }
+
+            project.tasks.create(name: 'build_envs') {
+                dependsOn conda_envs_task, jython_envs_task, create_files_task
             }
 
         }
