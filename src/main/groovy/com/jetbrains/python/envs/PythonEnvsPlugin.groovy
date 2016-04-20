@@ -178,7 +178,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                     dependsOn project.tasks.create("Create conda env '$name'") {
                         def env = project.file("$envs.envsDirectory/$name")
-                        def is64 = name.endsWith("_64")
+                        def is64 = name.endsWith("_64") || envs._64Bits
 
                         if (is64) {
                             dependsOn "bootstrapPython64"

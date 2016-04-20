@@ -15,6 +15,7 @@ class PythonEnvsExtension {
     List<PythonEnv> jythonEnvs = []
     List<PythonEnv> condaEnvs = []
     List<CreateFile> files = []
+    Boolean _64Bits = false
     
     void conda(final String envName, final String version, final List<String> packages) {
         condaEnvs << new VersionedPythonEnv(envName, version, packages)
