@@ -196,7 +196,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         doLast {
                             project.exec {
                                 executable is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
-                                args "create", "-p", env, "-y", "-f", "python=$e.version"
+                                args "create", "-p", env, "-y", "python=$e.version"
                                 args envs.packages
                             }
 
