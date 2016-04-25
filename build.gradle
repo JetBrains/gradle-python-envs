@@ -34,8 +34,8 @@ task sourceJar(type: Jar) {
 }
 
 pluginBundle {
-    website = 'https://github.com/traff/gradle-python-envs'
-    vcsUrl = 'https://github.com/traff/gradle-python-envs'
+    website = 'https://github.com/JetBrains/gradle-python-envs'
+    vcsUrl = 'https://github.com/JetBrains/gradle-python-envs'
     description = 'Gradle plugin to install different Python environments'
     tags = ['python', 'miniconda', 'conda']
     plugins {
