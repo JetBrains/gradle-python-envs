@@ -3,8 +3,10 @@ package com.jetbrains.python.envs
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.tasks.Exec
 import org.gradle.util.VersionNumber
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 class PythonEnvsPlugin implements Plugin<Project> {
     def os = System.getProperty('os.name').replaceAll(' ', '')
@@ -200,7 +202,20 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 args envs.packages
                             }
 
-                            pipInstall(project, "$envs.envsDirectory/$name", e.packages)
+                            def envPath = "$envs.envsDirectory/$name"
+                            pipInstall(project, envPath, e.packages)
+
+                            if (e.linkWithVersion) {
+
+                                def win = Os.isFamily(Os.FAMILY_WINDOWS);
+
+                                def ext = "${win ? '.exe' : ''}"
+                                final Path source = Paths.get(envPath, "python" + ext);
+                                final Path dest = Paths.get(envPath, "python" + e.version.toString() + ext );
+
+                                Files.createLink(dest, source);
+                            }
+
                         }
                     }
                 }
