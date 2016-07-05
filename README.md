@@ -27,9 +27,9 @@ envs {
   minicondaVersion = 'latest'
   packages = ["pip", "setuptools"]
 
-  conda "django19", "2.7", ["django==1.9"]
+  conda "django19", "2.7", ["django==1.9"], true
 
-  conda "python34_64", "3.4", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
+  conda "python34_64", "3.4", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"], true
 
   jython "jython25", []
 }

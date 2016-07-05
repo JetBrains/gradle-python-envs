@@ -16,9 +16,16 @@ class PythonEnvsExtension {
     List<PythonEnv> condaEnvs = []
     List<CreateFile> files = []
     Boolean _64Bits = false
-    
-    void conda(final String envName, final String version, final List<String> packages) {
-        condaEnvs << new VersionedPythonEnv(envName, version, packages)
+
+    /**
+     * @param envName name of environment like "env_for_django"
+     * @param version py version like "3.4"
+     * @param packages collection of py packages to install
+     * @param linkWithVersion if true, binary will be linked with version name.
+     * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
+     */
+    void conda(final String envName, final String version, final List<String> packages, final boolean linkWithVersion) {
+        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion)
     }
     
     void jython(final String envName, final List<String> packages) {
@@ -42,10 +49,12 @@ class PythonEnv {
 
 class VersionedPythonEnv extends PythonEnv {
     String version
+    boolean linkWithVersion
 
-    VersionedPythonEnv(String name, String version, List<String> packages) {
+    VersionedPythonEnv(String name, String version, List<String> packages, boolean linkWithVersion) {
         super(name, packages)
         this.version = version
+        this.linkWithVersion = linkWithVersion
     }
 }
 
