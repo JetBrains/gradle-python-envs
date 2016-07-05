@@ -205,13 +205,10 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             def envPath = "$envs.envsDirectory/$name"
                             pipInstall(project, envPath, e.packages)
 
-                            if (e.linkWithVersion) {
-
-                                def win = Os.isFamily(Os.FAMILY_WINDOWS);
-
-                                def ext = "${win ? '.exe' : ''}"
-                                final Path source = Paths.get(envPath, "python" + ext);
-                                final Path dest = Paths.get(envPath, "python" + e.version.toString() + ext );
+                            if (e.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
+                                // *nix envs have such links already
+                                final Path source = Paths.get(envPath, "python.exe");
+                                final Path dest = Paths.get(envPath, "python" + e.version.toString() + ".exe" );
 
                                 Files.createLink(dest, source);
                             }
