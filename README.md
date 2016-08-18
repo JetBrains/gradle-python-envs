@@ -31,6 +31,8 @@ envs {
 
   conda "python34_64", "3.4", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"], true
 
+  conda_install "pyqt_env", "2.7", ["pyqt"], false
+
   jython "jython25", []
 }
 ```
@@ -40,8 +42,13 @@ Then invoke the `build_envs` task.
 This will download and install the latest versions of Miniconda both for 32 and 64 bits and Jython to 
 `buildDir/pythons`.
 
-Then it will create `django19` and `python34_64` conda envs and `jython25` Jython env in `buildDir/envs`,
+Then it will create `django19`, `python34_64` and `pyqt_env` conda envs and `jython25` Jython env in `buildDir/envs`,
 installing all the libraries listed correspondingly.
+For `conda` libraries will be installed via `pip install` command.
+For `conda_install` command libraries will be installed via `conda install` command. It enables to install, for example,
+PyQt in env.
+If the last boolean parameter is true, binary will be linked with version name, i.e. "python" will have "python2.7"
+link (same for exe file). Used for envs like tox.
 
 
 License
