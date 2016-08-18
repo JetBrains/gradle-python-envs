@@ -44,9 +44,11 @@ This will download and install the latest versions of Miniconda both for 32 and 
 
 Then it will create `django19`, `python34_64` and `pyqt_env` conda envs and `jython25` Jython env in `buildDir/envs`,
 installing all the libraries listed correspondingly.
-For `conda` libraries will be installed via `pip install` command.
+
+For `conda` libraries will be installed via `pip install` command.  
 For `conda_install` command libraries will be installed via `conda install` command. It enables to install, for example,
 PyQt in env.
+
 If the last boolean parameter is true, binary will be linked with version name, i.e. "python" will have "python2.7"
 link (same for exe file). Used for envs like tox.
 
