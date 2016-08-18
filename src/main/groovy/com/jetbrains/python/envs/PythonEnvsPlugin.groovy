@@ -195,15 +195,21 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             !env.exists()
                         }
 
+                        def conda_executable = is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+
                         doLast {
                             project.exec {
-                                executable is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+                                executable conda_executable
                                 args "create", "-p", env, "-y", "python=$e.version"
                                 args envs.packages
                             }
 
                             def envPath = "$envs.envsDirectory/$name"
-                            pipInstall(project, envPath, e.packages)
+                            if (!e.useCondaInstall) {
+                                pipInstall(project, envPath, e.packages)
+                            } else {
+                                condaInstall(project, envPath, conda_executable, e.packages)
+                            }
 
                             if (e.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 // *nix envs have such links already
@@ -234,6 +240,15 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 dependsOn conda_envs_task, jython_envs_task, create_files_task
             }
 
+        }
+    }
+
+    private condaInstall(project, envPath, exec, packages) {
+        packages.collect {e -> [exec, "install", "-p", envPath, "-y"] + e}.each {
+            cmd ->
+                project.exec {
+                    commandLine cmd.flatten()
+                }
         }
     }
 
