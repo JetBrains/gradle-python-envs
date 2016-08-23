@@ -25,7 +25,12 @@ class PythonEnvsExtension {
      * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
      */
     void conda(final String envName, final String version, final List<String> packages, final boolean linkWithVersion) {
-        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion)
+        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion, false)
+    }
+
+    void conda_install(final String envName, final String version, final List<String> packages,
+                       final boolean linkWithVersion) {
+        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion, true)
     }
     
     void jython(final String envName, final List<String> packages) {
@@ -50,11 +55,14 @@ class PythonEnv {
 class VersionedPythonEnv extends PythonEnv {
     String version
     boolean linkWithVersion
+    boolean useCondaInstall
 
-    VersionedPythonEnv(String name, String version, List<String> packages, boolean linkWithVersion) {
+    VersionedPythonEnv(String name, String version, List<String> packages, boolean linkWithVersion,
+                       boolean useCondaInstall) {
         super(name, packages)
         this.version = version
         this.linkWithVersion = linkWithVersion
+        this.useCondaInstall = useCondaInstall
     }
 }
 
