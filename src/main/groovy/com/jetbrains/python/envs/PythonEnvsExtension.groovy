@@ -16,6 +16,7 @@ class PythonEnvsExtension {
     List<PythonEnv> condaEnvs = []
     List<CreateFile> files = []
     Boolean _64Bits = false
+    String CONDA_PREFIX = "CONDA_"
 
     /**
      * @param envName name of environment like "env_for_django"
@@ -25,12 +26,13 @@ class PythonEnvsExtension {
      * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
      */
     void conda(final String envName, final String version, final List<String> packages, final boolean linkWithVersion) {
-        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion, false)
+        def pipPackages = packages.findAll{!it.startsWith(CONDA_PREFIX)}
+        def condaPackages = packages.findAll{it.startsWith(CONDA_PREFIX)}.collect{it.substring(CONDA_PREFIX.length())}
+        condaEnvs << new VersionedPythonEnv(envName, version, pipPackages, condaPackages, linkWithVersion)
     }
 
-    void conda_install(final String envName, final String version, final List<String> packages,
-                       final boolean linkWithVersion) {
-        condaEnvs << new VersionedPythonEnv(envName, version, packages, linkWithVersion, true)
+    String install(final String packageName) {
+        return CONDA_PREFIX + packageName
     }
     
     void jython(final String envName, final List<String> packages) {
@@ -54,15 +56,15 @@ class PythonEnv {
 
 class VersionedPythonEnv extends PythonEnv {
     String version
+    List<String> condaPackages
     boolean linkWithVersion
-    boolean useCondaInstall
 
-    VersionedPythonEnv(String name, String version, List<String> packages, boolean linkWithVersion,
-                       boolean useCondaInstall) {
+    VersionedPythonEnv(String name, String version, List<String> packages, List<String> condaPackages,
+                       boolean linkWithVersion) {
         super(name, packages)
         this.version = version
+        this.condaPackages = condaPackages
         this.linkWithVersion = linkWithVersion
-        this.useCondaInstall = useCondaInstall
     }
 }
 
