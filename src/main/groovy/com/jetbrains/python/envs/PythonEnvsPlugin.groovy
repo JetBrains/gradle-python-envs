@@ -205,11 +205,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             }
 
                             def envPath = "$envs.envsDirectory/$name"
-                            if (!e.useCondaInstall) {
-                                pipInstall(project, envPath, e.packages)
-                            } else {
-                                condaInstall(project, envPath, conda_executable, e.packages)
-                            }
+                            pipInstall(project, envPath, e.packages)
+                            condaInstall(project, envPath, conda_executable, e.condaPackages)
 
                             if (e.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 // *nix envs have such links already
