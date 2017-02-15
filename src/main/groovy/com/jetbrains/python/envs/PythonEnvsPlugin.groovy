@@ -25,7 +25,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
         def myName = "Miniconda2"
         // versions <= 3.16 were named "Miniconda-${version}"
-        if (VersionNumber.parse(myExt.minicondaVersion) <= VersionNumber.parse("3.16")) {
+        // But latest in special case: it should always use Miniconda2, even VersionNumber.parse parses latest as 0.0.0
+        if (myExt.minicondaVersion != "latest" && VersionNumber.parse(myExt.minicondaVersion) <= VersionNumber.parse("3.16")) {
             myName = "Miniconda"
         }
         project.dependencies {
