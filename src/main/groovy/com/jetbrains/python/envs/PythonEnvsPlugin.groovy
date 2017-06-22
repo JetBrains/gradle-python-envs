@@ -157,17 +157,19 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             envs.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
-            def jython_envs_task = project.tasks.create(name: 'build_jython_envs', dependsOn: 'bootstrapJython') {
+            def jython_envs_task = project.tasks.create(name: 'build_jython_envs') {
                 onlyIf { !envs.jythonEnvs.empty }
 
-                doLast {
-                    envs.jythonEnvs.each { e ->
-                        project.exec {
-                            executable new File(envs.bootstrapDirectory, "jython/bin/virtualenv")
-                            args new File(envs.envsDirectory, e.name)
-                        }
+                envs.jythonEnvs.each { e ->
+                    dependsOn project.tasks.create(name:"Create Jython virtualenv '$name'", dependsOn: 'bootstrapJython') {
+                        doLast {
+                            project.exec {
+                                executable new File(envs.bootstrapDirectory, "jython/bin/virtualenv")
+                                args new File(envs.envsDirectory, e.name)
+                            }
 
-                        pipInstall(project, new File(envs.bootstrapDirectory, "jython").getPath(), e.packages)
+                            pipInstall(project, new File(envs.bootstrapDirectory, "jython").getPath(), e.packages)
+                        }
                     }
                 }
             }
