@@ -1,6 +1,5 @@
 package com.jetbrains.python.envs
 
-
 /**
  * Project extension to configure Python build environment.
  *
@@ -20,6 +19,8 @@ class PythonEnvsExtension {
     Boolean _64Bits = false
     String CONDA_PREFIX = "CONDA_"
 
+    List<String> basePackages = []
+
     /**
      * @param envName name of environment like "env_for_django"
      * @param version py version like "3.4"
@@ -28,8 +29,10 @@ class PythonEnvsExtension {
      * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
      */
     void conda(final String envName, final String version, final List<String> packages, final boolean linkWithVersion) {
-        def pipPackages = packages.findAll{!it.startsWith(CONDA_PREFIX)}
-        def condaPackages = packages.findAll{it.startsWith(CONDA_PREFIX)}.collect{it.substring(CONDA_PREFIX.length())}
+        def pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
+        def condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }.collect {
+            it.substring(CONDA_PREFIX.length())
+        }
         condaEnvs << new VersionedPythonEnv(envName, version, pipPackages, condaPackages, linkWithVersion)
     }
 
@@ -40,11 +43,11 @@ class PythonEnvsExtension {
     String install(final String packageName) {
         return CONDA_PREFIX + packageName
     }
-    
+
     void jython(final String envName, final List<String> packages) {
         jythonEnvs << new PythonEnv(envName, packages)
-    } 
-    
+    }
+
     void textfile(final String path, String content) {
         files << new CreateFile(path, content)
     }

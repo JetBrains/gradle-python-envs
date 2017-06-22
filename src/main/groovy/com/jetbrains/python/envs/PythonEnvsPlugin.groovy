@@ -54,11 +54,20 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
 
-    def createBootstrapPython(project, is64, minicondaBootstrapVersionDir) {
+    def createBootstrapPython(project, envs, is64, minicondaBootstrapVersionDir) {
         project.task("bootstrapPython" + (is64 ? "64" : "32")) {
             def conf = is64 ? project.configurations.minicondaInstaller64 : project.configurations.minicondaInstaller32
 
             def installDir = "$minicondaBootstrapVersionDir${is64 ? '_64' : '_32'}"
+
+            def condaExecutable = findCondaExecutable(installDir)
+
+            if (is64) {
+                envs.minicondaExecutable64 = condaExecutable
+            } else {
+                envs.minicondaExecutable32 = condaExecutable
+            }
+
 
             outputs.dir(installDir)
             onlyIf {
@@ -73,6 +82,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         commandLine "bash", conf.singleFile, "-b", "-p", installDir
                     }
                 }
+
+                condaInstall(project, null, condaExecutable, envs.basePackages)
 //            doFirst {
 //                if (!myExt.bootstrapDirectory.exists()) {
 //                    myExt.bootstrapDirectory.mkdir()
@@ -104,6 +115,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
         }
+    }
+
+    def findCondaExecutable(root) {
+        if (root.endsWith("/")) {
+            root = root.substring(0, root.length() - 1)
+        }
+        return new File("$root/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}").absolutePath
     }
 
     @Override
@@ -147,21 +165,17 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             def minicondaBootstrapVersionDir = new File(envs.bootstrapDirectory, envs.minicondaVersion)
 
-            createBootstrapPython(project, true, minicondaBootstrapVersionDir)
-            createBootstrapPython(project, false, minicondaBootstrapVersionDir)
+            createBootstrapPython(project, envs, true, minicondaBootstrapVersionDir)
+            createBootstrapPython(project, envs, false, minicondaBootstrapVersionDir)
 
             createBootstrapJython(project, new File(envs.bootstrapDirectory, "jython"))
 
-
-            envs.minicondaExecutable32 = new File("${minicondaBootstrapVersionDir}_32/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
-
-            envs.minicondaExecutable64 = new File("${minicondaBootstrapVersionDir}_64/${Os.isFamily(Os.FAMILY_WINDOWS) ? 'Scripts/conda.exe' : 'bin/conda'}")
 
             def jython_envs_task = project.tasks.create(name: 'build_jython_envs') {
                 onlyIf { !envs.jythonEnvs.empty }
 
                 envs.jythonEnvs.each { e ->
-                    dependsOn project.tasks.create(name:"Create Jython virtualenv '$name'", dependsOn: 'bootstrapJython') {
+                    dependsOn project.tasks.create(name: "Create Jython virtualenv '$name'", dependsOn: 'bootstrapJython') {
                         doLast {
                             project.exec {
                                 executable new File(envs.bootstrapDirectory, "jython/bin/virtualenv")
@@ -279,7 +293,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private condaInstall(project, envPath, condaExecutable, packages) {
-        packages.collect { e -> envPath != null ? [condaExecutable, "install", "-p", envPath, "-y"] : [condaExecutable, "install", "-y"] + e }.each {
+        packages.collect { e -> (envPath != null ? [condaExecutable, "install", "-p", envPath, "-y"] : [condaExecutable, "install", "-y"]) + e }.each {
             cmd ->
                 project.exec {
                     commandLine cmd.flatten()
