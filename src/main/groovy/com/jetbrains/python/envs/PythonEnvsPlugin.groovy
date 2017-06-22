@@ -172,6 +172,41 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
 
+            def virtualenvs_task = project.tasks.create(name: 'build_virtualenvs') {
+                onlyIf { !envs.virtualEnvs.empty }
+
+                envs.virtualEnvs.each { e ->
+                    def name = e.name
+
+                    dependsOn project.tasks.create("Create virtualenv '$name'") {
+                        def env = project.file("$envs.envsDirectory/$name")
+                        def is64 = name.endsWith("_64") || envs._64Bits
+
+                        if (is64) {
+                            dependsOn "bootstrapPython64"
+                        } else {
+                            dependsOn "bootstrapPython32"
+                        }
+
+                        onlyIf {
+                            !env.exists()
+                        }
+
+                        def conda_executable = is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+
+                        doLast {
+                            condaInstall(project, null, conda_executable, ["virtualenv"])
+
+                            project.exec {
+                                executable new File(new File(conda_executable).parent, "virtualenv")
+                                args "$envs.envsDirectory/$name"
+                            }
+                        }
+                    }
+                }
+
+            }
+
             def conda_envs_task = project.tasks.create(name: 'build_conda_envs') {
                 onlyIf { !envs.condaEnvs.empty }
 
@@ -212,7 +247,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             if (e.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 // *nix envs have such links already
                                 final Path source = Paths.get(envPath, "python.exe");
-                                final Path dest = Paths.get(envPath, "python" + e.version.toString() + ".exe" );
+                                final Path dest = Paths.get(envPath, "python" + e.version.toString() + ".exe");
 
                                 Files.createLink(dest, source);
                             }
@@ -227,7 +262,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 envs.files.each { e ->
                     def f = new File(envs.envsDirectory, e.path)
-                    
+
                     doLast {
                         f.write(e.content)
                     }
@@ -235,14 +270,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             project.tasks.create(name: 'build_envs') {
-                dependsOn conda_envs_task, jython_envs_task, create_files_task
+                dependsOn conda_envs_task, jython_envs_task, virtualenvs_task, create_files_task
             }
 
         }
     }
 
-    private condaInstall(project, envPath, exec, packages) {
-        packages.collect {e -> [exec, "install", "-p", envPath, "-y"] + e}.each {
+    private condaInstall(project, envPath, condaExecutable, packages) {
+        packages.collect { e -> envPath != null ? [condaExecutable, "install", "-p", envPath, "-y"] : [condaExecutable, "install", "-y"] + e }.each {
             cmd ->
                 project.exec {
                     commandLine cmd.flatten()

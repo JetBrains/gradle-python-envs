@@ -14,6 +14,8 @@ class PythonEnvsExtension {
     List<String> packages
     List<PythonEnv> jythonEnvs = []
     List<PythonEnv> condaEnvs = []
+    List<PythonEnv> virtualEnvs = []
+
     List<CreateFile> files = []
     Boolean _64Bits = false
     String CONDA_PREFIX = "CONDA_"
@@ -29,6 +31,10 @@ class PythonEnvsExtension {
         def pipPackages = packages.findAll{!it.startsWith(CONDA_PREFIX)}
         def condaPackages = packages.findAll{it.startsWith(CONDA_PREFIX)}.collect{it.substring(CONDA_PREFIX.length())}
         condaEnvs << new VersionedPythonEnv(envName, version, pipPackages, condaPackages, linkWithVersion)
+    }
+
+    void virtualenv(final String envName, final List<String> packages) {
+        virtualEnvs << new PythonEnv(envName, packages)
     }
 
     String install(final String packageName) {
