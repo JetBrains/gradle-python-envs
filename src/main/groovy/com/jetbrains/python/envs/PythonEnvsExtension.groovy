@@ -29,7 +29,7 @@ class PythonEnvsExtension {
      * @param packages collection of py packages to install
      */
     void python(final String envName, final String version, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, EnvType.PYTHON, version, packages)
+        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, packages)
     }
 
     /**
@@ -44,14 +44,14 @@ class PythonEnvsExtension {
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
-        condaEnvs << new CondaEnv(envName, version, pipPackages, condaPackages, linkWithVersion)
+        condaEnvs << new CondaEnv(envName, envsDirectory, version, pipPackages, condaPackages, linkWithVersion)
     }
 
     /**
      * @see #python
      */
     void jython(final String envName, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, EnvType.JYTHON, null, packages)
+        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.JYTHON, null, packages)
     }
 
     // TODO pypy
@@ -62,9 +62,9 @@ class PythonEnvsExtension {
      * @param sourceEnvName name of inherited environment like "env_for_django"
      */
     void virtualenv(final String envName, final String sourceEnvName, final List<String> packages = null) {
-        PythonEnv pythonEnv = (pythonEnvs + condaEnvs + envsFromZip).find { it.name == sourceEnvName }
+        PythonEnv pythonEnv = allEnvs().find { it.name == sourceEnvName }
         if (pythonEnv != null) {
-            virtualEnvs << new VirtualEnv(envName, pythonEnv, packages)
+            virtualEnvs << new VirtualEnv(envName, virtualenvsDirectory ?: envsDirectory, pythonEnv, packages)
         } else {
             println("\u001B[31mSpecified environment '$sourceEnvName' for virtualenv '$envName' isn't found\u001B[0m")
         }
@@ -76,9 +76,13 @@ class PythonEnvsExtension {
      */
     void envFromZip(final String envName,
                     final URL urlToArchive,
-                    final EnvType type = null,
+                    final String type = null,
                     final List<String> packages = null) {
-        envsFromZip << new PythonEnv(envName, type, null, packages, urlToArchive)
+        envsFromZip << new PythonEnv(envName, envsDirectory, EnvType.fromString(type), null, packages, urlToArchive)
+    }
+
+    private List<PythonEnv> allEnvs() {
+        return pythonEnvs + condaEnvs + envsFromZip
     }
 
     String condaPackage(final String packageName) {
@@ -96,20 +100,33 @@ enum EnvType {
     CONDA,
     JYTHON,
     PYPY,
-    IRONPYTHON
+    IRONPYTHON,
+    VIRTUALENV
+    // TODO non-python virtuaenv?
+
+    static fromString(String type) {
+        return type == null ? null : valueOf(type.toUpperCase())
+    }
 }
 
 
 class PythonEnv {
     String name
+    File envDir
     EnvType type
     String version
     List<String> packages
     URL url
 
-    PythonEnv(String name, EnvType type = null, String version = null, List<String> packages = null, URL url = null) {
+    PythonEnv(String name,
+              File dir,
+              EnvType type = null,
+              String version = null,
+              List<String> packages = null,
+              URL url = null) {
         this.name = name
-        this.type = type ?: EnvType.PYTHON
+        this.envDir = new File(dir, name)
+        this.type = type
         this.version = version
         this.packages = packages
         this.url = url
@@ -121,23 +138,25 @@ class CondaEnv extends PythonEnv {
     List<String> condaPackages
     boolean linkWithVersion
 
-    CondaEnv(String name, String version, List<String> packages, List<String> condaPackages, boolean linkWithVersion) {
-        super(name, EnvType.CONDA, version, packages)
+    CondaEnv(String name,
+             File dir,
+             String version,
+             List<String> packages,
+             List<String> condaPackages,
+             boolean linkWithVersion) {
+        super(name, dir, EnvType.CONDA, version, packages)
         this.condaPackages = condaPackages
         this.linkWithVersion = linkWithVersion
     }
 }
 
 
-class VirtualEnv {
-    String name
+class VirtualEnv extends PythonEnv {
     PythonEnv sourceEnv
-    List<String> packages
 
-    VirtualEnv(String name, PythonEnv sourceEnv, packages) {
-        this.name = name
+    VirtualEnv(String name, File dir, PythonEnv sourceEnv, List<String> packages) {
+        super(name, dir, EnvType.VIRTUALENV, null, packages)
         this.sourceEnv = sourceEnv
-        this.packages = packages
     }
 }
 
