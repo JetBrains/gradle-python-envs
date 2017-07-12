@@ -10,7 +10,6 @@ import org.gradle.util.VersionNumber
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
 
 class PythonEnvsPlugin implements Plugin<Project> {
     String os = System.getProperty('os.name').replaceAll(' ', '')
@@ -61,7 +60,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             def conf = is64 ? project.configurations.minicondaInstaller64 : project.configurations.minicondaInstaller32
 
             File installDir = new File(envs.bootstrapDirectory, minicondaVersion.concat(is64 ? '_64' : '_32'))
-            File condaExecutable = findCondaExecutable(installDir)
+            File condaExecutable = getExecutable(installDir, EnvType.CONDA, "conda")
 
             if (is64) {
                 envs.minicondaExecutable64 = condaExecutable
@@ -83,7 +82,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     }
                 }
 
-                condaInstall(project, condaExecutable, envs.condaBasePackages)
+                condaInstall(project, condaExecutable, installDir, envs.condaBasePackages)
             }
         }
     }
@@ -92,7 +91,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         project.tasks.create(name: 'install_python_build') {
             outputs.dir(installDir)
             onlyIf {
-                !installDir.exists()
+                !installDir.exists() && Os.isFamily(Os.FAMILY_UNIX)
             }
 
             doLast {
@@ -116,14 +115,44 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private static File findCondaExecutable(File condaDir) {
-        return new File(condaDir, Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/conda.exe" : "bin/conda")
+    private static File getExecutable(File dir, EnvType type, String executable) {
+        String pathString
+
+        switch (type) {
+            case [EnvType.PYTHON, EnvType.CONDA]:
+                if (executable in ["pip", "virtualenv", "conda"]) {
+                    pathString = Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/${executable}.exe" : "bin/${executable}"
+                } else if (executable == "python") {
+                    pathString = "${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                } else {
+                    throw new RuntimeException("$executable is not supported for $type yet")
+                }
+                break
+            case EnvType.JYTHON:
+                pathString = "bin/${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                break
+            default:
+                throw new RuntimeException("$type is not supported yet")
+        }
+
+        return new File(dir, pathString)
+    }
+
+    private static getPipFile(Project project) {
+        new File(project.buildDir, "get-pip.py").with { file ->
+            if (!file.exists()){
+                project.ant.get(dest: file) {
+                    url(url: "https://bootstrap.pypa.io/get-pip.py")
+                }
+            }
+            return file
+        }
     }
 
     private Task createPythonEnvUnix(Project project, PythonEnv env, File envDir) {
-        return project.tasks.create(name: "Create $env.type interpreter '$env.name'") {
+        return project.tasks.create(name: "Create $env.type env '$env.name'") {
             onlyIf {
-                !envDir.exists()
+                !envDir.exists() && Os.isFamily(Os.FAMILY_UNIX)
             }
 
             dependsOn "install_python_build"
@@ -140,55 +169,61 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     throw new StopExecutionException()
                 }
 
-                pipInstall(project, envDir, env.packages)
+                pipInstall(project, envDir, env.type, env.packages)
             }
         }
     }
 
-    private Task createPythonEnvWindows(Project project, PythonEnv env, File envDir){
-        return project.tasks.create(name: "Create $env.type interpreter '$env.name'") {
+    private Task createPythonEnvWindows(Project project, PythonEnv env, File envDir) {
+        return project.tasks.create(name: "Create $env.type env '$env.name'") {
             onlyIf {
-                !envDir.exists()
+                !envDir.exists() && Os.isFamily(Os.FAMILY_WINDOWS)
             }
 
             doLast {
                 try {
-                    String urlToMsi = "https://www.python.org/ftp/python/$version/python-$version.msi"
-                    project.ant.get(dest: new File(project.buildDir, "python-$version.msi")) {
-                        url(url: urlToMsi)
+                    boolean is64 = true // TODO 64 bits stuff
+                    String extension = VersionNumber.parse(env.version) >= VersionNumber.parse("3.5.0") ? "exe" : "msi"
+                    String filename = "python-${env.version}${is64 ? (extension == "msi" ? "." : "-") + "amd64" : ""}.$extension"
+                    File installer = new File(project.buildDir, filename)
+
+                    project.ant.get(dest: installer) {
+                        url(url: "https://www.python.org/ftp/python/${env.version}/$filename")
                     }
+                    if (extension == "msi") {
+                        project.exec {
+                            commandLine "msiexec", "/i", installer, "/quiet", "TARGETDIR=$envDir.absolutePath"
+                        }
+                    } else if (extension == "exe") {
+                        project.mkdir(envDir)
+                        project.exec {
+                            executable installer
+                            args installer, "/i", "/quiet", "TargetDir=$envDir.absolutePath", "Include_launcher=0",
+                                    "InstallLauncherAllUsers=0", "Shortcuts=0", "AssociateFiles=0"
+                        }
+                    }
+
+                    if (!getExecutable(envDir, env.type, "pip").exists()) {
+                        project.exec {
+                            executable getExecutable(envDir, env.type, "python")
+                            args getPipFile(project)
+                        }
+                    }
+                    // It's better to save installer for good uninstall
+//                    installer.delete()
                 }
                 catch (Exception e) {
                     printRedText(e.message)
                     throw new StopExecutionException()
                 }
 
-                // TODO msi install script
-
-                pipInstall(project, envDir, env.packages)
-            }
-        }
-    }
-
-    private Task createJythonEnv(Project project, PythonEnv env, File envDir) {
-        return project.tasks.create(name: "Create jython interpreter '$env.name'") {
-            onlyIf {
-                !envDir.exists()
-            }
-
-            doLast {
-                project.javaexec {
-                    main = '-jar'
-                    args project.configurations.jython.singleFile, '-s', '-d', envDir, '-t', 'standard'
-                }
-
-                pipInstall(project, envDir, env.packages)
+                pipInstall(project, envDir, env.type, env.packages)
             }
         }
     }
 
     private Closure printRedText = { String base ->
-        println("\u001B[31m $base \u001B[0m")
+        println("\u001B[31m$base\u001B[0m")
     }
 
     @Override
@@ -235,48 +270,15 @@ class PythonEnvsPlugin implements Plugin<Project> {
             Task python_envs_task = project.tasks.create(name: 'build_python_envs') {
                 onlyIf { !envs.pythonEnvs.empty }
 
-                envs.pythonEnvs.each { env ->
+                envs.pythonEnvs.findAll { it.type == EnvType.PYTHON }.each { env ->
                     File envDir = new File(envs.envsDirectory, env.name)
 
-                    if (env.type == "jython") {
-                        dependsOn createJythonEnv(project, env, envDir)
-                    }
-                    else if (Os.isFamily(Os.FAMILY_UNIX)) {
+                    if (Os.isFamily(Os.FAMILY_UNIX)) {
                         dependsOn createPythonEnvUnix(project, env, envDir)
-                    }
-                    else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                    } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
                         dependsOn createPythonEnvWindows(project, env, envDir)
-                    }
-                }
-            }
-
-            Task virtualenvs_task = project.tasks.create(name: 'build_virtualenvs') {
-                onlyIf { !envs.virtualEnvs.empty }
-
-                envs.virtualEnvs.each { env ->
-                    dependsOn project.tasks.create("Create virtualenv '$env.name'") {
-                        File virtualEnvDir = new File(envs.virtualenvsDirectory ?: envs.envsDirectory, env.name)
-
-                        onlyIf {
-                            !virtualEnvDir.exists()
-                        }
-
-                        doLast {
-                            File sourceEnvDir = new File(envs.envsDirectory, env.sourceEnv.name)
-
-                            if (env.sourceEnv.type == "conda") {
-                                condaInstall(project, findCondaExecutable(sourceEnvDir), ["virtualenv"], sourceEnvDir)
-                            } else {
-                                pipInstall(project, sourceEnvDir, ["virtualenv"])
-                            }
-
-                            project.exec {
-                                executable new File(sourceEnvDir, "bin/virtualenv")
-                                args virtualEnvDir
-                            }
-
-                            pipInstall(project, virtualEnvDir, env.packages)
-                        }
+                    } else {
+                        printRedText("Something is wrong with os: $os")
                     }
                 }
             }
@@ -309,15 +311,124 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 args env.condaPackages
                             }
 
-                            pipInstall(project, envDir, env.packages)
+                            pipInstall(project, envDir, EnvType.CONDA, env.packages)
 
                             if (env.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 // *nix envs have such links already
-                                final Path source = Paths.get(envDir.toString(), "python.exe")
-                                final Path dest = Paths.get(envDir.toString(), "python" + env.version.toString() + ".exe")
+                                Path source = getExecutable(envDir, EnvType.CONDA, "python").toPath()
+                                Path dest = getExecutable(envDir, EnvType.CONDA, "python${env.version}.exe").toPath()
 
                                 Files.createLink(dest, source)
                             }
+                        }
+                    }
+                }
+            }
+
+            Task jython_envs_task = project.tasks.create(name: 'build_jython_envs') {
+                onlyIf { !envs.condaEnvs.empty }
+
+                envs.pythonEnvs.findAll { it.type == EnvType.JYTHON }.each { env ->
+                    File envDir = new File(envs.envsDirectory, env.name)
+
+                    dependsOn project.tasks.create(name: "Create jython env '$env.name'") {
+                        onlyIf {
+                            !envDir.exists()
+                        }
+
+                        doLast {
+                            project.javaexec {
+                                main = '-jar'
+                                args project.configurations.jython.singleFile, '-s', '-d', envDir, '-t', 'standard'
+                            }
+
+                            pipInstall(project, envDir, EnvType.JYTHON, env.packages)
+                        }
+                    }
+                }
+            }
+
+            Task envs_from_zip_task = project.tasks.create(name: 'build_envs_from_zip') {
+                onlyIf { !envs.envsFromZip.empty }
+
+                envs.envsFromZip.each { env ->
+                    dependsOn project.tasks.create(name: "Create env '$env.name' from archive $env.url") {
+                        File envDir = new File(envs.envsDirectory, env.name)
+
+                        onlyIf {
+                            !envDir.exists()
+                        }
+
+                        doLast {
+                            try {
+                                String archiveName = env.url.toString().with { urlString ->
+                                    urlString.substring(urlString.lastIndexOf('/') + 1, urlString.length())
+                                }
+                                if (!archiveName.endsWith("zip")) {
+                                    throw new RuntimeException("Wrong archive extension, only zip is supported")
+                                }
+
+                                File zipArchive = new File(project.buildDir, archiveName)
+                                project.ant.get(dest: zipArchive) {
+                                    url(url: env.url)
+                                }
+                                project.ant.unzip(src: zipArchive, dest: envDir)
+
+                                if (!getExecutable(envDir, env.type, "pip").exists()) {
+                                    project.exec {
+                                        executable getExecutable(envDir, env.type, "python")
+                                        args getPipFile(project)
+                                    }
+                                } else {
+                                    project.exec {
+                                        executable getExecutable(envDir, env.type, "python")
+                                        args "-m", "pip", "install", "--upgrade", "--force", "setuptools", "pip"
+                                    }
+                                }
+
+                                zipArchive.delete()
+                            }
+                            catch (Exception e) {
+                                printRedText(e.message)
+                                throw new StopExecutionException()
+                            }
+
+                            pipInstall(project, envDir, env.type, env.packages)
+                        }
+                    }
+                }
+            }
+
+            Task virtualenvs_task = project.tasks.create(name: 'build_virtualenvs') {
+                shouldRunAfter python_envs_task, conda_envs_task, jython_envs_task, envs_from_zip_task
+
+                onlyIf { !envs.virtualEnvs.empty }
+
+                envs.virtualEnvs.each { env ->
+                    dependsOn project.tasks.create("Create virtualenv '$env.name'") {
+                        File virtualEnvDir = new File(envs.virtualenvsDirectory ?: envs.envsDirectory, env.name)
+
+                        onlyIf {
+                            !virtualEnvDir.exists()
+                        }
+
+                        doLast {
+                            File sourceEnvDir = new File(envs.envsDirectory, env.sourceEnv.name)
+
+                            if (env.sourceEnv.type == EnvType.CONDA) {
+                                File condaExecutable = env.sourceEnv.name.endsWith("_64") ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+                                condaInstall(project, condaExecutable, sourceEnvDir, ["virtualenv"])
+                            } else {
+                                pipInstall(project, sourceEnvDir, env.sourceEnv.type, ["virtualenv"])
+                            }
+
+                            project.exec {
+                                executable getExecutable(sourceEnvDir, env.sourceEnv.type, "virtualenv")
+                                args virtualEnvDir, "--always-copy"
+                                workingDir sourceEnvDir
+                            }
+
+                            pipInstall(project, virtualEnvDir, env.sourceEnv.type, env.packages)
                         }
                     }
                 }
@@ -336,32 +447,37 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             project.tasks.create(name: 'build_envs') {
-                dependsOn python_envs_task, conda_envs_task, virtualenvs_task, create_files_task
+                dependsOn python_envs_task,
+                        conda_envs_task,
+                        jython_envs_task,
+                        envs_from_zip_task,
+                        virtualenvs_task,
+                        create_files_task
             }
 
         }
     }
 
-    private void condaInstall(Project project, File condaExecutable, List<String> packages, File envDir = null) {
-        packages.collect { e ->
-            [condaExecutable, "install", "-y"] + (envDir != null ? ["-p", envDir] : []) + e
-        }.each {
-            cmd ->
-                project.exec {
-                    commandLine cmd.flatten()
-                }
+    private void condaInstall(Project project, File condaExecutable, File envDir, List<String> packages) {
+        if (packages == null) {
+            return
+        }
+        packages.each { pckg ->
+            project.exec {
+                commandLine condaExecutable, "install", "-y", "-p", envDir, pckg
+            }
         }
     }
 
-    private void pipInstall(Project project, File envDir, List<String> packages) {
-        File pipExecutable = new File(envDir, Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/pip.exe" : "bin/pip")
-        packages.collect { e ->
-            [pipExecutable, "install"] + e
-        }.each {
-            cmd ->
-                project.exec {
-                    commandLine cmd.flatten()
-                }
+    private void pipInstall(Project project, File envDir, EnvType type, List<String> packages) {
+        if (packages == null || type == null) {
+            return
+        }
+        File pipExecutable = getExecutable(envDir, type, "pip")
+        packages.each { pckg ->
+            project.exec {
+                commandLine pipExecutable, "install", pckg
+            }
         }
     }
 }
