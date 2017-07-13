@@ -19,17 +19,21 @@ class PythonEnvsExtension {
     List<PythonEnv> envsFromZip = []
     List<CreateFile> files = []
 
+    Boolean _64Bits = true  // By default 64 bit envs should be installed
     String CONDA_PREFIX = "CONDA_"
-
-    // TODO 64 bits stuff
 
     /**
      * @param envName name of environment like "env_for_django"
      * @param version py version like "3.4"
      * @param packages collection of py packages to install
      */
-    void python(final String envName, final String version, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, packages)
+
+    void python(final String envName,
+                final String version,
+                final String architecture = null,
+                final List<String> packages = null) {
+        Boolean is64 = (architecture == null) ? _64Bits : !(architecture == "32")
+        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64, packages)
     }
 
     /**
@@ -39,19 +43,21 @@ class PythonEnvsExtension {
      */
     void conda(final String envName,
                final String version,
+               final String architecture = null,
                final List<String> packages = null,
                final boolean linkWithVersion = false) {
+        Boolean is64 = (architecture == null) ? _64Bits : !(architecture == "32")
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
-        condaEnvs << new CondaEnv(envName, envsDirectory, version, pipPackages, condaPackages, linkWithVersion)
+        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64, pipPackages, condaPackages, linkWithVersion)
     }
 
     /**
      * @see #python
      */
     void jython(final String envName, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.JYTHON, null, packages)
+        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.JYTHON, null, null, packages)
     }
 
     // TODO pypy
@@ -78,7 +84,7 @@ class PythonEnvsExtension {
                     final URL urlToArchive,
                     final String type = null,
                     final List<String> packages = null) {
-        envsFromZip << new PythonEnv(envName, envsDirectory, EnvType.fromString(type), null, packages, urlToArchive)
+        envsFromZip << new PythonEnv(envName, envsDirectory, EnvType.fromString(type), null, null, packages, urlToArchive)
     }
 
     private List<PythonEnv> allEnvs() {
@@ -111,23 +117,26 @@ enum EnvType {
 
 
 class PythonEnv {
-    String name
-    File envDir
-    EnvType type
-    String version
-    List<String> packages
-    URL url
+    final String name
+    final File envDir
+    final EnvType type
+    final String version
+    final Boolean is64
+    final List<String> packages
+    final URL url
 
     PythonEnv(String name,
               File dir,
               EnvType type = null,
               String version = null,
+              Boolean is64 = true,
               List<String> packages = null,
               URL url = null) {
         this.name = name
         this.envDir = new File(dir, name)
         this.type = type
         this.version = version
+        this.is64 = is64
         this.packages = packages
         this.url = url
     }
@@ -135,16 +144,17 @@ class PythonEnv {
 
 
 class CondaEnv extends PythonEnv {
-    List<String> condaPackages
-    boolean linkWithVersion
+    final List<String> condaPackages
+    final boolean linkWithVersion
 
     CondaEnv(String name,
              File dir,
              String version,
+             Boolean is64,
              List<String> packages,
              List<String> condaPackages,
              boolean linkWithVersion) {
-        super(name, dir, EnvType.CONDA, version, packages)
+        super(name, dir, EnvType.CONDA, version, is64, packages)
         this.condaPackages = condaPackages
         this.linkWithVersion = linkWithVersion
     }
@@ -152,18 +162,18 @@ class CondaEnv extends PythonEnv {
 
 
 class VirtualEnv extends PythonEnv {
-    PythonEnv sourceEnv
+    final PythonEnv sourceEnv
 
     VirtualEnv(String name, File dir, PythonEnv sourceEnv, List<String> packages) {
-        super(name, dir, EnvType.VIRTUALENV, null, packages)
+        super(name, dir, EnvType.VIRTUALENV, null, null, packages)
         this.sourceEnv = sourceEnv
     }
 }
 
 
 class CreateFile {
-    String path
-    String content
+    final String path
+    final String content
 
     CreateFile(String path, String content) {
         this.path = path

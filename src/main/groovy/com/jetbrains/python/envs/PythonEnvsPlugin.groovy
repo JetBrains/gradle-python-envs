@@ -141,7 +141,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         return new File(dir ?: env.envDir, pathString)
     }
 
-    private static getPipFile(Project project) {
+    private static File getPipFile(Project project) {
         new File(project.buildDir, "get-pip.py").with { file ->
             if (!file.exists()){
                 project.ant.get(dest: file) {
@@ -185,9 +185,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             doLast {
                 try {
-                    boolean is64 = true // TODO 64 bits stuff
                     String extension = VersionNumber.parse(env.version) >= VersionNumber.parse("3.5.0") ? "exe" : "msi"
-                    String filename = "python-${env.version}${is64 ? (extension == "msi" ? "." : "-") + "amd64" : ""}.$extension"
+                    String filename = "python-${env.version}${env.is64 ? (extension == "msi" ? "." : "-") + "amd64" : ""}.$extension"
                     File installer = new File(project.buildDir, filename)
 
                     project.ant.get(dest: installer) {
@@ -289,9 +288,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 envs.condaEnvs.each { env ->
                     dependsOn project.tasks.create("Create conda env '$env.name'") {
-                        boolean is64 = !env.name.endsWith("_32")
-
-                        if (is64) {
+                        if (env.is64) {
                             dependsOn "bootstrap_conda_64"
                         } else {
                             dependsOn "bootstrap_conda_32"
@@ -302,7 +299,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             !env.envDir.exists()
                         }
 
-                        File condaExecutable = is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
+                        File condaExecutable = env.is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
 
                         doLast {
                             project.exec {
