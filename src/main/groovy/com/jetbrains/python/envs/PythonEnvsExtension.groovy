@@ -9,8 +9,8 @@ class PythonEnvsExtension {
     File envsDirectory
     File virtualenvsDirectory
     String minicondaVersion // TODO latest by default
-    File minicondaExecutable32
-    File minicondaExecutable64
+    protected File minicondaExecutable32
+    protected File minicondaExecutable64
     List<String> condaBasePackages = []
 
     List<PythonEnv> pythonEnvs = []
@@ -27,7 +27,6 @@ class PythonEnvsExtension {
      * @param version py version like "3.4"
      * @param packages collection of py packages to install
      */
-
     void python(final String envName,
                 final String version,
                 final String architecture = null,
@@ -60,8 +59,35 @@ class PythonEnvsExtension {
         pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.JYTHON, null, null, packages)
     }
 
-    // TODO pypy
-    // TODO ironpython
+    /**
+     * @see #python
+     */
+    void pypy(final String envName, final List<String> packages = null, final String version = null) {
+        pythonEnvs << new PythonEnv(
+                envName,
+                envsDirectory,
+                EnvType.PYPY,
+                version ?: "pypy2.7-5.8.0",
+                null,
+                packages
+        )
+    }
+
+    /**
+     * @see #python
+     */
+    void ironpython(final String envName, final List<String> packages = null, final URL urlToArchive = null) {
+        URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
+        envsFromZip << new PythonEnv(
+                envName,
+                envsDirectory,
+                EnvType.IRONPYTHON,
+                null,
+                null,
+                packages,
+                urlToArchive ?: urlToIronPythonZip
+        )
+    }
 
     /**
      * @see #python
@@ -84,7 +110,15 @@ class PythonEnvsExtension {
                     final URL urlToArchive,
                     final String type = null,
                     final List<String> packages = null) {
-        envsFromZip << new PythonEnv(envName, envsDirectory, EnvType.fromString(type), null, null, packages, urlToArchive)
+        envsFromZip << new PythonEnv(
+                envName,
+                envsDirectory,
+                EnvType.fromString(type),
+                null,
+                null,
+                packages,
+                urlToArchive
+        )
     }
 
     private List<PythonEnv> allEnvs() {

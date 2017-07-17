@@ -128,11 +128,15 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     throw new RuntimeException("$executable is not supported for $env.type yet")
                 }
                 break
-            case EnvType.JYTHON:
+            case [EnvType.JYTHON, EnvType.PYPY]:
                 pathString = "bin/${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
                 break
             case EnvType.VIRTUALENV:
-                pathString = "Scripts/$executable${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                if (env.sourceEnv.type == EnvType.PYPY) {
+                    pathString = "bin/$executable${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                } else {
+                    pathString = "Scripts/$executable${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                }
                 break
             default:
                 throw new RuntimeException("$env.type env type is not supported yet")
@@ -224,6 +228,23 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
+    private Task createJythonEnv(Project project, PythonEnv env) {
+        return project.tasks.create(name: "Create jython env '$env.name'") {
+            onlyIf {
+                !env.envDir.exists()
+            }
+
+            doLast {
+                project.javaexec {
+                    main = '-jar'
+                    args project.configurations.jython.singleFile, '-s', '-d', env.envDir, '-t', 'standard'
+                }
+
+                pipInstall(project, env, env.packages)
+            }
+        }
+    }
+
     private Closure printRedText = { String base ->
         println("\u001B[31m$base\u001B[0m")
     }
@@ -272,13 +293,29 @@ class PythonEnvsPlugin implements Plugin<Project> {
             Task python_envs_task = project.tasks.create(name: 'build_python_envs') {
                 onlyIf { !envs.pythonEnvs.empty }
 
-                envs.pythonEnvs.findAll { it.type == EnvType.PYTHON }.each { env ->
-                    if (Os.isFamily(Os.FAMILY_UNIX)) {
-                        dependsOn createPythonEnvUnix(project, env)
-                    } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-                        dependsOn createPythonEnvWindows(project, env)
-                    } else {
-                        printRedText("Something is wrong with os: $os")
+                envs.pythonEnvs.each { env ->
+                    switch (env.type) {
+                        case EnvType.PYTHON:
+                            if (Os.isFamily(Os.FAMILY_UNIX)) {
+                                dependsOn createPythonEnvUnix(project, env)
+                            } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                                dependsOn createPythonEnvWindows(project, env)
+                            } else {
+                                printRedText("Something is wrong with os: $os")
+                            }
+                            break
+                        case EnvType.JYTHON:
+                            dependsOn createJythonEnv(project, env)
+                            break
+                        case EnvType.PYPY:
+                            if (Os.isFamily(Os.FAMILY_UNIX)) {
+                                dependsOn createPythonEnvUnix(project, env)
+                            } else {
+                                printRedText("PyPy installation isn't supported for $os, please use envFromZip instead")
+                            }
+                            break
+                        default:
+                            printRedText("$env.type isn't supported yet")
                     }
                 }
             }
@@ -317,27 +354,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                                 Files.createLink(dest, source)
                             }
-                        }
-                    }
-                }
-            }
-
-            Task jython_envs_task = project.tasks.create(name: 'build_jython_envs') {
-                onlyIf { !envs.condaEnvs.empty }
-
-                envs.pythonEnvs.findAll { it.type == EnvType.JYTHON }.each { env ->
-                    dependsOn project.tasks.create(name: "Create jython env '$env.name'") {
-                        onlyIf {
-                            !env.envDir.exists()
-                        }
-
-                        doLast {
-                            project.javaexec {
-                                main = '-jar'
-                                args project.configurations.jython.singleFile, '-s', '-d', env.envDir, '-t', 'standard'
-                            }
-
-                            pipInstall(project, env, env.packages)
                         }
                     }
                 }
@@ -395,7 +411,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             Task virtualenvs_task = project.tasks.create(name: 'build_virtualenvs') {
-                shouldRunAfter python_envs_task, conda_envs_task, jython_envs_task, envs_from_zip_task
+                shouldRunAfter python_envs_task, conda_envs_task, envs_from_zip_task
 
                 onlyIf { !envs.virtualEnvs.empty }
 
@@ -440,7 +456,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
             project.tasks.create(name: 'build_envs') {
                 dependsOn python_envs_task,
                         conda_envs_task,
-                        jython_envs_task,
                         envs_from_zip_task,
                         virtualenvs_task,
                         create_files_task
