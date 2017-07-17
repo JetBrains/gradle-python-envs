@@ -122,7 +122,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             case [EnvType.PYTHON, EnvType.CONDA]:
                 if (executable in ["pip", "virtualenv", "conda"]) {
                     pathString = Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/${executable}.exe" : "bin/${executable}"
-                } else if (executable == "python") {
+                } else if (executable.startsWith("python")) {
                     pathString = "${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
                 } else {
                     throw new RuntimeException("$executable is not supported for $env.type yet")
@@ -313,7 +313,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             if (env.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 // *nix envs have such links already
                                 Path source = getExecutable("python", env).toPath()
-                                Path dest = getExecutable("python${env.version}.exe", env).toPath()
+                                Path dest = getExecutable("python${env.version}", env).toPath()
 
                                 Files.createLink(dest, source)
                             }
