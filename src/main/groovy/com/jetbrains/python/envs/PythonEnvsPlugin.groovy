@@ -131,6 +131,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
             case [EnvType.JYTHON, EnvType.PYPY]:
                 pathString = "bin/${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
                 break
+            case EnvType.IRONPYTHON:
+                if (executable == "ipy") {
+                    pathString = env.is64 ? "ipy64.exe" : "ipy.exe"
+                } else {
+                    pathString = "Scripts/${executable}.exe"
+                }
+                break
             case EnvType.VIRTUALENV:
                 if (env.sourceEnv.type == EnvType.PYPY) {
                     pathString = "bin/$executable${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
@@ -383,11 +390,30 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 }
                                 project.ant.unzip(src: zipArchive, dest: env.envDir)
 
+                                env.envDir.with { dir ->
+                                    if (dir.listFiles().length == 1) {
+                                        File intermediateDir = dir.listFiles().last()
+                                        if (!intermediateDir.isDirectory()){
+                                            throw new RuntimeException("Archive is wrong, $env.url")
+                                        }
+                                        project.ant.move(todir: dir) {
+                                            fileset(dir: intermediateDir)
+                                        }
+                                    } else {
+                                        return dir
+                                    }
+                                }
+
                                 if (env.type != null) {
                                     if (!getExecutable("pip", env).exists()) {
                                         project.exec {
-                                            executable getExecutable("python", env)
-                                            args getPipFile(project)
+                                            if (env.type == EnvType.IRONPYTHON) {
+                                                executable getExecutable("ipy", env)
+                                                args "-X:Frames", "-m", "ensurepip"
+                                            } else {
+                                                executable getExecutable("python", env)
+                                                args getPipFile(project)
+                                            }
                                         }
                                     } else {
                                         project.exec {
@@ -416,6 +442,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 onlyIf { !envs.virtualEnvs.empty }
 
                 envs.virtualEnvs.each { env ->
+                    if (env.sourceEnv.type == EnvType.IRONPYTHON) {
+                        printRedText("IronPython doesn't support virtualenvs")
+                        return
+                    }
+
                     dependsOn project.tasks.create("Create virtualenv '$env.name'") {
                         onlyIf {
                             !env.envDir.exists() && env.sourceEnv.type != null
@@ -464,6 +495,22 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
+    private void pipInstall(Project project, PythonEnv env, List<String> packages) {
+        if (packages == null || env.type == null) {
+            return
+        }
+        if (env.type == EnvType.IRONPYTHON) {
+            ironpythonInstall(project, env, packages)
+            return
+        }
+        File pipExecutable = getExecutable("pip", env)
+        packages.each { pckg ->
+            project.exec {
+                commandLine pipExecutable, "install", pckg
+            }
+        }
+    }
+
     private void condaInstall(Project project, File condaExecutable, File envDir, List<String> packages) {
         if (packages == null) {
             return
@@ -475,14 +522,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void pipInstall(Project project, PythonEnv env, List<String> packages) {
-        if (packages == null || env.type == null) {
-            return
-        }
-        File pipExecutable = getExecutable("pip", env)
+    private void ironpythonInstall(Project project, PythonEnv env, List<String> packages) {
+        File ipyExecutable = getExecutable("ipy", env)
         packages.each { pckg ->
             project.exec {
-                commandLine pipExecutable, "install", pckg
+                commandLine ipyExecutable, "-X:Frames", "-m", "pip", "install", pckg
             }
         }
     }

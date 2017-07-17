@@ -31,8 +31,7 @@ class PythonEnvsExtension {
                 final String version,
                 final String architecture = null,
                 final List<String> packages = null) {
-        Boolean is64 = (architecture == null) ? _64Bits : !(architecture == "32")
-        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64, packages)
+        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64(architecture), packages)
     }
 
     /**
@@ -45,11 +44,10 @@ class PythonEnvsExtension {
                final String architecture = null,
                final List<String> packages = null,
                final boolean linkWithVersion = false) {
-        Boolean is64 = (architecture == null) ? _64Bits : !(architecture == "32")
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
-        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64, pipPackages, condaPackages, linkWithVersion)
+        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages, linkWithVersion)
     }
 
     /**
@@ -76,14 +74,17 @@ class PythonEnvsExtension {
     /**
      * @see #python
      */
-    void ironpython(final String envName, final List<String> packages = null, final URL urlToArchive = null) {
+    void ironpython(final String envName,
+                    final List<String> packages = null,
+                    final String architecture = null,
+                    final URL urlToArchive = null) {
         URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
         envsFromZip << new PythonEnv(
                 envName,
                 envsDirectory,
                 EnvType.IRONPYTHON,
                 null,
-                null,
+                is64(architecture),
                 packages,
                 urlToArchive ?: urlToIronPythonZip
         )
@@ -121,6 +122,10 @@ class PythonEnvsExtension {
         )
     }
 
+    void textfile(final String path, final String content) {
+        files << new CreateFile(path, content)
+    }
+
     private List<PythonEnv> allEnvs() {
         return pythonEnvs + condaEnvs + envsFromZip
     }
@@ -129,8 +134,8 @@ class PythonEnvsExtension {
         return CONDA_PREFIX + packageName
     }
 
-    void textfile(final String path, final String content) {
-        files << new CreateFile(path, content)
+    private Boolean is64(final String architecture) {
+        return (architecture == null) ? _64Bits : !(architecture == "32")
     }
 }
 
