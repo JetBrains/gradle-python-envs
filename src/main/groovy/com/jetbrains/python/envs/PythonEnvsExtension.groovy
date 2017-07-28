@@ -8,7 +8,7 @@ class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
     File virtualenvsDirectory
-    String minicondaVersion // TODO latest by default
+    String minicondaVersion = 'latest'
     protected File minicondaExecutable32
     protected File minicondaExecutable64
     List<String> condaBasePackages = []

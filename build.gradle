@@ -28,31 +28,6 @@ dependencies {
     compile gradleApi()
 }
 
-task includePythonBuildZip {
-    File pythonBuildZip = new File(buildDir, "resources/main/python-build.zip")
-
-    onlyIf {
-        !pythonBuildZip.exists()
-    }
-
-    doLast {
-        new File(buildDir, "pyenv.zip").with { pyenvZip ->
-            ant.get(dest: pyenvZip) {
-                ant.url(url: "https://github.com/pyenv/pyenv/archive/master.zip")
-            }
-            ant.unzip(src: pyenvZip, dest: buildDir)
-            pyenvZip.delete()
-        }
-
-        ant.zip(destfile: pythonBuildZip) {
-            ant.fileset(dir: new File(buildDir, "pyenv-master/plugins/python-build"))
-        }
-    }
-}
-
-jar.dependsOn(includePythonBuildZip)
-processResources.shouldRunAfter(includePythonBuildZip)
-
 pluginBundle {
     website = 'https://github.com/JetBrains/gradle-python-envs'
     vcsUrl = 'https://github.com/JetBrains/gradle-python-envs'
