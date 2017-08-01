@@ -102,7 +102,7 @@ class PythonEnvsExtension {
         if (pythonEnv != null) {
             virtualEnvs << new VirtualEnv(envName, virtualenvsDirectory ?: envsDirectory, pythonEnv, packages)
         } else {
-            println("\u001B[31mSpecified environment '$sourceEnvName' for virtualenv '$envName' isn't found\u001B[0m")
+            println("Specified environment '$sourceEnvName' for virtualenv '$envName' isn't found")
         }
     }
 

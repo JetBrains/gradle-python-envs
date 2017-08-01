@@ -187,7 +187,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     }
                 }
                 catch (Exception e) {
-                    printRedText(e.message)
+                    println(e.message)
                     throw new StopExecutionException()
                 }
 
@@ -234,7 +234,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 //                    installer.delete()
                 }
                 catch (Exception e) {
-                    printRedText(e.message)
+                    println(e.message)
                     throw new StopExecutionException()
                 }
 
@@ -258,10 +258,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 pipInstall(project, env, env.packages)
             }
         }
-    }
-
-    private Closure printRedText = { String base ->
-        println("\u001B[31m$base\u001B[0m")
     }
 
     @Override
@@ -315,7 +311,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
                                 dependsOn createPythonEnvWindows(project, env)
                             } else {
-                                printRedText("Something is wrong with os: $os")
+                                println("Something is wrong with os: $os")
                             }
                             break
                         case EnvType.JYTHON:
@@ -325,11 +321,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             if (Os.isFamily(Os.FAMILY_UNIX)) {
                                 dependsOn createPythonEnvUnix(project, env)
                             } else {
-                                printRedText("PyPy installation isn't supported for $os, please use envFromZip instead")
+                                println("PyPy installation isn't supported for $os, please use envFromZip instead")
                             }
                             break
                         default:
-                            printRedText("$env.type isn't supported yet")
+                            println("$env.type isn't supported yet")
                     }
                 }
             }
@@ -433,7 +429,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 zipArchive.delete()
                             }
                             catch (Exception e) {
-                                printRedText(e.message)
+                                println(e.message)
                                 throw new StopExecutionException()
                             }
 
@@ -450,7 +446,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 envs.virtualEnvs.each { env ->
                     if (env.sourceEnv.type == EnvType.IRONPYTHON) {
-                        printRedText("IronPython doesn't support virtualenvs")
+                        println("IronPython doesn't support virtualenvs")
                         return
                     }
 
