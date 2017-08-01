@@ -16,7 +16,6 @@ repositories {
     jcenter()
 }
 
-
 uploadArchives {
     repositories {
         maven {
@@ -27,10 +26,6 @@ uploadArchives {
 
 dependencies {
     compile gradleApi()
-}
-
-task sourceJar(type: Jar) {
-    from sourceSets.main.allSource
 }
 
 pluginBundle {
