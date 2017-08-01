@@ -8,10 +8,13 @@ class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
     File virtualenvsDirectory
-    String minicondaVersion = 'latest'
+
+    String minicondaVersion = "latest"
     protected File minicondaExecutable32
     protected File minicondaExecutable64
     List<String> condaBasePackages = []
+
+    String pypyDefaultVersion = "pypy2.7-5.8.0"
 
     List<PythonEnv> pythonEnvs = []
     List<CondaEnv> condaEnvs = []
@@ -65,7 +68,7 @@ class PythonEnvsExtension {
                 envName,
                 envsDirectory,
                 EnvType.PYPY,
-                version ?: "pypy2.7-5.8.0",
+                version ?: pypyDefaultVersion,
                 null,
                 packages
         )
