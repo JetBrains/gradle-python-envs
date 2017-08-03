@@ -75,7 +75,7 @@ class PythonEnvsExtension {
     /**
      * @see #python
      */
-    void pypy(final String envName, final List<String> packages = null, final String version = null) {
+    void pypy(final String envName, final String version = null, final List<String> packages = null) {
         pythonEnvs << new PythonEnv(
                 envName,
                 envsDirectory,
@@ -86,12 +86,16 @@ class PythonEnvsExtension {
         )
     }
 
+    void pypy(final String envName, final List<String> packages) {
+        pypy(envName, null, packages)
+    }
+
     /**
      * @see #python
      */
     void ironpython(final String envName,
-                    final List<String> packages = null,
                     final String architecture = null,
+                    final List<String> packages = null,
                     final URL urlToArchive = null) {
         URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
         envsFromZip << new PythonEnv(
@@ -103,6 +107,12 @@ class PythonEnvsExtension {
                 packages,
                 urlToArchive ?: urlToIronPythonZip
         )
+    }
+
+    void ironpython(final String envName,
+                    final List<String> packages,
+                    final URL urlToArchive = null) {
+        ironpython(envName, null, packages, urlToArchive)
     }
 
     /**
