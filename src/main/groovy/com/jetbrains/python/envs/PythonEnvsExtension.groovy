@@ -147,23 +147,22 @@ class PythonEnvsExtension {
         )
     }
 
-    void textfile(final String path, final String content) {
-        File _file = new File(envsDirectory, path)
-        files << new CreateFile(_file, content)
-    }
-
     void textfile(final File file, final String content) {
         files << new CreateFile(file, content)
     }
 
-    void link(final String link, final String source) {
-        Path _link = new File(envsDirectory, link).toPath()
-        Path _source = new File(envsDirectory, source).toPath()
-        links << new CreateLink(_link, _source)
+    void textfile(final String path, final String content) {
+        textfile(new File(envsDirectory, path), content)
     }
 
     void link(final Path link, final Path source) {
         links << new CreateLink(link, source)
+    }
+
+    void link(final String linkString, final String sourceString) {
+        Path linkPath = new File(envsDirectory, linkString).toPath()
+        Path sourcePath = new File(envsDirectory, sourceString).toPath()
+        link(linkPath, sourcePath)
     }
 
     private List<PythonEnv> allEnvs() {
