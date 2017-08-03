@@ -48,11 +48,17 @@ envs {
   virtualenv "envPython35", "python35_64", ["pytest"]
   virtualenv "envPython36", "python36_32", ["behave", "requests"]
 
-  //conda "envName", "version", "architecture", [<packages>], createLinkWithVersion?
-  conda "django19", "2.7", null, ["django==1.9"], true
-  conda "conda34", "3.4", "64", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"], true
-  conda "pyqt_env", "2.7", null, [condaPackage("pyqt")], false
+  //conda "envName", "version", "architecture", [<packages>]
+  conda "django19", "2.7", null, ["django==1.9"]
+  conda "conda34", "3.4", "64", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
+  conda "pyqt_env", "2.7", null, [condaPackage("pyqt")]
   virtualenv "envConda34", "conda34", ["django==1.9"]
+
+  if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+    // This links are used for envs like tox; *nix envs have such links already
+    link "django19/bin/python2.7.exe", "django19/bin/python.exe"
+    link "conda34/bin/python3.4.exe", "conda34/bin/python.exe"
+  }
 
   //jython "envName", [<packages>]
   jython "jython"
@@ -80,9 +86,6 @@ Then invoke the `build_envs` task.
 This will download and install the latest versions of Miniconda both for 32 and 64 bits to `buildDir/bootstrap`.
 
 Then it will create several envs in `buildDir/envs` and virtualenvs in `buildDir/virtualenvs`, installing all the libraries listed correspondingly. Packages in list are installed with `pip install` command. If the function `condaPackage()` was called for package name, it will be installed with `conda install` command. It enables to install, for example, PyQt in env.
-
-If boolean parameter createLinkWithVersion is true, binary will be linked with version name, i.e. "python" will have "python2.7"
-link (same for exe file). Used for envs like tox.
 
 
 License

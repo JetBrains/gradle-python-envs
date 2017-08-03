@@ -21,6 +21,7 @@ class PythonEnvsExtension {
     List<VirtualEnv> virtualEnvs = []
     List<PythonEnv> envsFromZip = []
     List<CreateFile> files = []
+    List<CreateLink> links = []
 
     Boolean _64Bits = true  // By default 64 bit envs should be installed
     String CONDA_PREFIX = "CONDA_"
@@ -39,18 +40,15 @@ class PythonEnvsExtension {
 
     /**
      * @see #python
-     * @param linkWithVersion if true, binary will be linked with version name.
-     * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
      */
     void conda(final String envName,
                final String version,
                final String architecture = null,
-               final List<String> packages = null,
-               final boolean linkWithVersion = false) {
+               final List<String> packages = null) {
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
-        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages, linkWithVersion)
+        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages)
     }
 
     /**
@@ -129,6 +127,10 @@ class PythonEnvsExtension {
         files << new CreateFile(path, content)
     }
 
+    void link(final String link, final String source) {
+        links << new CreateLink(link, source)
+    }
+
     private List<PythonEnv> allEnvs() {
         return pythonEnvs + condaEnvs + envsFromZip
     }
@@ -187,18 +189,15 @@ class PythonEnv {
 
 class CondaEnv extends PythonEnv {
     final List<String> condaPackages
-    final boolean linkWithVersion
 
     CondaEnv(String name,
              File dir,
              String version,
              Boolean is64,
              List<String> packages,
-             List<String> condaPackages,
-             boolean linkWithVersion) {
+             List<String> condaPackages) {
         super(name, dir, EnvType.CONDA, version, is64, packages)
         this.condaPackages = condaPackages
-        this.linkWithVersion = linkWithVersion
     }
 }
 
@@ -220,5 +219,16 @@ class CreateFile {
     CreateFile(String path, String content) {
         this.path = path
         this.content = content
+    }
+}
+
+
+class CreateLink {
+    final String link
+    final String source
+
+    CreateLink(String link, String source) {
+        this.link = link
+        this.source = source
     }
 }
