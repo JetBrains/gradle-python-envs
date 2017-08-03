@@ -470,11 +470,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
             Task create_files_task = project.tasks.create(name: 'create_files') {
                 onlyIf { !envs.files.empty }
 
-                envs.files.each { e ->
-                    File f = new File(envs.envsDirectory, e.path)
-
-                    doLast {
-                        f.write(e.content)
+                doLast {
+                    envs.files.each { e ->
+                        e.file.write(e.content)
                     }
                 }
             }
@@ -482,11 +480,10 @@ class PythonEnvsPlugin implements Plugin<Project> {
             Task create_links_task = project.tasks.create(name: 'create_links') {
                 onlyIf { !envs.links.empty }
 
-                envs.links.each { e ->
-                    Path link = new File(envs.envsDirectory, e.link).toPath()
-                    Path source = new File(envs.envsDirectory, e.source).toPath()
-
-                    Files.createLink(link, source)
+                doLast {
+                    envs.links.each { e ->
+                        Files.createLink(e.link, e.source)
+                    }
                 }
             }
 

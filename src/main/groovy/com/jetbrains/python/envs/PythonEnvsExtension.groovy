@@ -1,5 +1,7 @@
 package com.jetbrains.python.envs
 
+import java.nio.file.Path
+
 /**
  * Project extension to configure Python build environment.
  *
@@ -38,6 +40,12 @@ class PythonEnvsExtension {
         pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64(architecture), packages)
     }
 
+    void python(final String envName,
+                final String version,
+                final List<String> packages) {
+        python(envName, version, null, packages)
+    }
+
     /**
      * @see #python
      */
@@ -49,6 +57,12 @@ class PythonEnvsExtension {
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
         condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages)
+    }
+
+    void conda(final String envName,
+               final String version,
+               final List<String> packages) {
+        conda(envName, version, null, packages)
     }
 
     /**
@@ -124,10 +138,21 @@ class PythonEnvsExtension {
     }
 
     void textfile(final String path, final String content) {
-        files << new CreateFile(path, content)
+        File _file = new File(envsDirectory, path)
+        files << new CreateFile(_file, content)
+    }
+
+    void textfile(final File file, final String content) {
+        files << new CreateFile(file, content)
     }
 
     void link(final String link, final String source) {
+        Path _link = new File(envsDirectory, link).toPath()
+        Path _source = new File(envsDirectory, source).toPath()
+        links << new CreateLink(_link, _source)
+    }
+
+    void link(final Path link, final Path source) {
         links << new CreateLink(link, source)
     }
 
@@ -213,21 +238,21 @@ class VirtualEnv extends PythonEnv {
 
 
 class CreateFile {
-    final String path
+    final File file
     final String content
 
-    CreateFile(String path, String content) {
-        this.path = path
+    CreateFile(File file, String content) {
+        this.file = file
         this.content = content
     }
 }
 
 
 class CreateLink {
-    final String link
-    final String source
+    final Path link
+    final Path source
 
-    CreateLink(String link, String source) {
+    CreateLink(Path link, Path source) {
         this.link = link
         this.source = source
     }
