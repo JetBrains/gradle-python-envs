@@ -17,7 +17,7 @@ but in addition to creating Conda envs it provides:
 7. Creating PyPy environments (only Unix is supported, by default pypy2.7-5.8.0 version is used)
 8. Creating IronPython environments (only Windows is supported, by default [2.7.7 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.7) is used)
 9. Virtualenv creation from any environment created
-10. Env from zip creation: downloading archive from specified url, unpacking and preparing to work with
+10. Python from zip creation: downloading archive from specified url, unpacking and preparing to work with
 11. Package installation for any environment or virtualenv 
 
 
@@ -32,8 +32,6 @@ and configure the associated extension:
 envs {
   bootstrapDirectory = new File(buildDir, 'bootstrap')
   envsDirectory = new File(buildDir, 'envs')
-  // if virtualenvsDirectory is not specified - envsDirectory is used
-  virtualenvsDirectory = new File(buildDir, 'virtualenvs')  
   
   // List of packages to install in bootstrapped miniconda's environments
   condaBasePackages = ["requests"]

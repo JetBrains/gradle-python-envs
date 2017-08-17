@@ -9,7 +9,6 @@ import org.gradle.api.tasks.StopExecutionException
 import org.gradle.util.VersionNumber
 
 import java.nio.file.Files
-import java.nio.file.Path
 
 class PythonEnvsPlugin implements Plugin<Project> {
     String os = System.getProperty('os.name').replaceAll(' ', '')
@@ -57,9 +56,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private void createBootstrapCondaTask(Project project, PythonEnvsExtension envs, String minicondaVersion) {
         for (architecture in ["32", "64"]){
-            project.tasks.create("bootstrap_conda_".concat(architecture)) {
+            project.tasks.create("Bootstrap MINICONDA $architecture bit") {
                 Configuration conf = null
-                File installDir = new File(envs.bootstrapDirectory, minicondaVersion.concat("_$architecture"))
+                File installDir = new File(envs.bootstrapDirectory, "miniconda_${minicondaVersion}_${architecture}")
                 File condaExecutable = getExecutable("conda", null, installDir, EnvType.CONDA)
 
                 if (architecture == "64") {
@@ -76,6 +75,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
 
                 doLast {
+                    project.logger.quiet("Bootstraping to $installDir")
                     project.exec {
                         if (os.contains("Windows")) {
                             commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
@@ -99,6 +99,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             doLast {
                 new File(project.buildDir, "pyenv.zip").with { pyenvZip ->
+                    project.logger.quiet("Downloading latest pyenv from github")
                     project.ant.get(dest: pyenvZip) {
                         url(url: "https://github.com/pyenv/pyenv/archive/master.zip")
                     }
@@ -106,6 +107,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     File unzipFolder = new File(project.buildDir, "python-build-tmp")
                     String pathToPythonBuildInPyenv = "pyenv-master/plugins/python-build"
 
+                    project.logger.quiet("Unzipping python-build to $unzipFolder")
                     project.copy {
                         from project.zipTree(pyenvZip)
                         into unzipFolder
@@ -115,11 +117,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
                     }
 
+                    project.logger.quiet("Installing python-build via bash to $installDir")
                     project.exec {
                         commandLine "bash", new File(unzipFolder, "install.sh")
                         environment PREFIX: installDir
                     }
 
+                    project.logger.quiet("Removing garbage")
                     unzipFolder.deleteDir()
                     pyenvZip.delete()
                 }
@@ -127,7 +131,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private static File getExecutable(String executable, PythonEnv env = null, File dir = null, EnvType type = null) {
+    private static File getExecutable(String executable, Python env = null, File dir = null, EnvType type = null) {
         String pathString
 
         switch (type ?: env.type) {
@@ -171,8 +175,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createPythonEnvUnix(Project project, PythonEnv env) {
-        return project.tasks.create(name: "Create $env.type env '$env.name'") {
+    private Task createPythonUnix(Project project, Python env) {
+        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists() && Os.isFamily(Os.FAMILY_UNIX)
             }
@@ -180,14 +184,17 @@ class PythonEnvsPlugin implements Plugin<Project> {
             dependsOn "install_python_build"
 
             doLast {
+                project.logger.quiet("Creating $env.type '$env.name' at $env.envDir directory")
+
                 try {
                     project.exec {
                         executable new File(project.buildDir, "python-build/bin/python-build")
                         args env.version, env.envDir
                     }
+                    project.logger.quiet("Successfully")
                 }
                 catch (Exception e) {
-                    println(e.message)
+                    project.logger.error(e.message)
                     throw new StopExecutionException()
                 }
 
@@ -196,21 +203,26 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createPythonEnvWindows(Project project, PythonEnv env) {
-        return project.tasks.create(name: "Create $env.type env '$env.name'") {
+    private Task createPythonWindows(Project project, Python env) {
+        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists() && Os.isFamily(Os.FAMILY_WINDOWS)
             }
 
             doLast {
+                project.logger.quiet("Creating $env.type '$env.name' at $env.envDir directory")
+
                 try {
                     String extension = VersionNumber.parse(env.version) >= VersionNumber.parse("3.5.0") ? "exe" : "msi"
                     String filename = "python-${env.version}${env.is64 ? (extension == "msi" ? "." : "-") + "amd64" : ""}.$extension"
                     File installer = new File(project.buildDir, filename)
 
+                    project.logger.quiet("Downloading $installer")
                     project.ant.get(dest: installer) {
                         url(url: "https://www.python.org/ftp/python/${env.version}/$filename")
                     }
+
+                    project.logger.quiet("Installing $env.name")
                     if (extension == "msi") {
                         project.exec {
                             commandLine "msiexec", "/i", installer, "/quiet", "TARGETDIR=$env.envDir.absolutePath"
@@ -225,6 +237,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     }
 
                     if (!getExecutable("pip", env).exists()) {
+                        project.logger.quiet("Downloading & installing pip and setuptools")
                         project.exec {
                             executable getExecutable("python", env)
                             args getPipFile(project)
@@ -234,7 +247,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 //                    installer.delete()
                 }
                 catch (Exception e) {
-                    println(e.message)
+                    project.logger.error(e.message)
                     throw new StopExecutionException()
                 }
 
@@ -243,13 +256,15 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createJythonEnv(Project project, PythonEnv env) {
-        return project.tasks.create(name: "Create jython env '$env.name'") {
+    private Task createJython(Project project, Python env) {
+        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists()
             }
 
             doLast {
+                project.logger.quiet("Creating $env.type '$env.name' at $env.envDir directory")
+
                 project.javaexec {
                     main = '-jar'
                     args project.configurations.jython.singleFile, '-s', '-d', env.envDir, '-t', 'standard'
@@ -300,32 +315,32 @@ class PythonEnvsPlugin implements Plugin<Project> {
             createBootstrapCondaTask(project, envs, envs.minicondaVersion)
             createInstallPythonBuildTask(project, new File(project.buildDir, "python-build"))
 
-            Task python_envs_task = project.tasks.create(name: 'build_python_envs') {
-                onlyIf { !envs.pythonEnvs.empty }
+            Task python_task = project.tasks.create(name: 'build_pythons') {
+                onlyIf { !envs.pythons.empty }
 
-                envs.pythonEnvs.each { env ->
+                envs.pythons.each { env ->
                     switch (env.type) {
                         case EnvType.PYTHON:
                             if (Os.isFamily(Os.FAMILY_UNIX)) {
-                                dependsOn createPythonEnvUnix(project, env)
+                                dependsOn createPythonUnix(project, env)
                             } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-                                dependsOn createPythonEnvWindows(project, env)
+                                dependsOn createPythonWindows(project, env)
                             } else {
-                                println("Something is wrong with os: $os")
+                                project.logger.error("Something is wrong with os: $os")
                             }
                             break
                         case EnvType.JYTHON:
-                            dependsOn createJythonEnv(project, env)
+                            dependsOn createJython(project, env)
                             break
                         case EnvType.PYPY:
                             if (Os.isFamily(Os.FAMILY_UNIX)) {
-                                dependsOn createPythonEnvUnix(project, env)
+                                dependsOn createPythonUnix(project, env)
                             } else {
-                                println("PyPy installation isn't supported for $os, please use envFromZip instead")
+                                project.logger.warn("PyPy installation isn't supported for $os, please use envFromZip instead")
                             }
                             break
                         default:
-                            println("$env.type isn't supported yet")
+                            project.logger.error("$env.type isn't supported yet")
                     }
                 }
             }
@@ -335,11 +350,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 envs.condaEnvs.each { env ->
                     dependsOn project.tasks.create("Create conda env '$env.name'") {
-                        if (env.is64) {
-                            dependsOn "bootstrap_conda_64"
-                        } else {
-                            dependsOn "bootstrap_conda_32"
-                        }
+                        dependsOn "Bootstrap MINICONDA ${env.is64 ? "64" : "32"} bit"
 
                         outputs.dir(env.envDir)
                         onlyIf {
@@ -349,6 +360,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         File condaExecutable = env.is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
 
                         doLast {
+                            project.logger.quiet("Creating condaenv '$env.name' at $env.envDir directory")
                             project.exec {
                                 executable condaExecutable
                                 args "create", "-p", env.envDir, "-y", "python=$env.version"
@@ -361,11 +373,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
 
-            Task envs_from_zip_task = project.tasks.create(name: 'build_envs_from_zip') {
-                onlyIf { !envs.envsFromZip.empty }
+            Task python_from_zip_task = project.tasks.create(name: 'build_pythons_from_zip') {
+                onlyIf { !envs.pythonsFromZip.empty }
 
-                envs.envsFromZip.each { env ->
-                    dependsOn project.tasks.create(name: "Create env '$env.name' from archive $env.url") {
+                envs.pythonsFromZip.each { env ->
+                    dependsOn project.tasks.create(name: "Bootstrap ${env.type ?: ''} '$env.name' from archive") {
                         onlyIf {
                             !env.envDir.exists()
                         }
@@ -380,9 +392,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 }
 
                                 File zipArchive = new File(project.buildDir, archiveName)
+                                project.logger.quiet("Downloading $archiveName archive from $env.url")
                                 project.ant.get(dest: zipArchive) {
                                     url(url: env.url)
                                 }
+
+                                project.logger.quiet("Unzipping downloaded $archiveName archive")
                                 project.ant.unzip(src: zipArchive, dest: env.envDir)
 
                                 env.envDir.with { dir ->
@@ -401,6 +416,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                                 if (env.type != null) {
                                     if (!getExecutable("pip", env).exists()) {
+                                        project.logger.quiet("Downloading & installing pip and setuptools")
                                         project.exec {
                                             if (env.type == EnvType.IRONPYTHON) {
                                                 executable getExecutable("ipy", env)
@@ -411,6 +427,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                             }
                                         }
                                     } else {
+                                        project.logger.quiet("Force upgrade pip and setuptools")
                                         project.exec {
                                             executable getExecutable("python", env)
                                             args "-m", "pip", "install", "--upgrade", "--force", "setuptools", "pip"
@@ -418,10 +435,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                     }
                                 }
 
+                                project.logger.quiet("Deleting $archiveName archive")
                                 zipArchive.delete()
                             }
                             catch (Exception e) {
-                                println(e.message)
+                                project.logger.error(e.message)
                                 throw new StopExecutionException()
                             }
 
@@ -431,14 +449,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
 
-            Task virtualenvs_task = project.tasks.create(name: 'build_virtualenvs') {
-                shouldRunAfter python_envs_task, conda_envs_task, envs_from_zip_task
+            Task virtualenvs_task = project.tasks.create(name: 'build_virtual_envs') {
+                shouldRunAfter python_task, conda_envs_task, python_from_zip_task
 
                 onlyIf { !envs.virtualEnvs.empty }
 
                 envs.virtualEnvs.each { env ->
                     if (env.sourceEnv.type == EnvType.IRONPYTHON) {
-                        println("IronPython doesn't support virtualenvs")
+                        project.logger.warn("IronPython doesn't support virtualenvs")
                         return
                     }
 
@@ -448,6 +466,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doLast {
+                            project.logger.quiet("Installing needed virtualenv package")
+
                             if (env.sourceEnv.type == EnvType.CONDA) {
                                 File condaExecutable = env.sourceEnv.is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
                                 condaInstall(project, condaExecutable, env.sourceEnv.envDir, ["virtualenv"])
@@ -455,6 +475,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 pipInstall(project, env.sourceEnv, ["virtualenv"])
                             }
 
+                            project.logger.quiet("Creating virtualenv from $env.sourceEnv.name at $env.envDir")
                             project.exec {
                                 executable getExecutable("virtualenv", env.sourceEnv)
                                 args env.envDir, "--always-copy"
@@ -488,9 +509,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             project.tasks.create(name: 'build_envs') {
-                dependsOn python_envs_task,
+                dependsOn python_task,
                         conda_envs_task,
-                        envs_from_zip_task,
+                        python_from_zip_task,
                         virtualenvs_task,
                         create_files_task,
                         create_links_task
@@ -499,9 +520,11 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void pipInstall(Project project, PythonEnv env, List<String> packages) {
+    private void pipInstall(Project project, Python env, List<String> packages) {
         if (packages == null || env.type == null) {
             return
+        } else {
+            project.logger.quiet("Installing packages via pip: $packages")
         }
         if (env.type == EnvType.IRONPYTHON) {
             ironpythonInstall(project, env, packages)
@@ -518,6 +541,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
     private void condaInstall(Project project, File condaExecutable, File envDir, List<String> packages) {
         if (packages == null) {
             return
+        } else {
+            project.logger.quiet("Installing packages via conda: $packages")
         }
         packages.each { pckg ->
             project.exec {
@@ -526,7 +551,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void ironpythonInstall(Project project, PythonEnv env, List<String> packages) {
+    private void ironpythonInstall(Project project, Python env, List<String> packages) {
         File ipyExecutable = getExecutable("ipy", env)
         packages.each { pckg ->
             project.exec {
