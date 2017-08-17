@@ -10,7 +10,6 @@ import java.nio.file.Paths
 class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
-    File virtualenvsDirectory
 
     String minicondaVersion = "latest"
     protected File minicondaExecutable32
@@ -19,10 +18,10 @@ class PythonEnvsExtension {
 
     String pypyDefaultVersion = "pypy2.7-5.8.0"
 
-    List<PythonEnv> pythonEnvs = []
+    List<Python> pythons = []
     List<CondaEnv> condaEnvs = []
     List<VirtualEnv> virtualEnvs = []
-    List<PythonEnv> envsFromZip = []
+    List<Python> pythonsFromZip = []
     List<CreateFile> files = []
     List<CreateLink> links = []
 
@@ -38,7 +37,7 @@ class PythonEnvsExtension {
                 final String version,
                 final String architecture = null,
                 final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64(architecture), packages)
+        pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
     }
 
     void python(final String envName,
@@ -70,16 +69,16 @@ class PythonEnvsExtension {
      * @see #python
      */
     void jython(final String envName, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.JYTHON, null, null, packages)
+        pythons << new Python(envName, bootstrapDirectory, EnvType.JYTHON, null, null, packages)
     }
 
     /**
      * @see #python
      */
     void pypy(final String envName, final String version = null, final List<String> packages = null) {
-        pythonEnvs << new PythonEnv(
+        pythons << new Python(
                 envName,
-                envsDirectory,
+                bootstrapDirectory,
                 EnvType.PYPY,
                 version ?: pypyDefaultVersion,
                 null,
@@ -99,9 +98,9 @@ class PythonEnvsExtension {
                     final List<String> packages = null,
                     final URL urlToArchive = null) {
         URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
-        envsFromZip << new PythonEnv(
+        pythonsFromZip << new Python(
                 envName,
-                envsDirectory,
+                bootstrapDirectory,
                 EnvType.IRONPYTHON,
                 null,
                 is64(architecture),
@@ -121,9 +120,9 @@ class PythonEnvsExtension {
      * @param sourceEnvName name of inherited environment like "env_for_django"
      */
     void virtualenv(final String envName, final String sourceEnvName, final List<String> packages = null) {
-        PythonEnv pythonEnv = allEnvs().find { it.name == sourceEnvName }
+        Python pythonEnv = allPythons().find { it.name == sourceEnvName }
         if (pythonEnv != null) {
-            virtualEnvs << new VirtualEnv(envName, virtualenvsDirectory ?: envsDirectory, pythonEnv, packages)
+            virtualEnvs << new VirtualEnv(envName, envsDirectory, pythonEnv, packages)
         } else {
             println("Specified environment '$sourceEnvName' for virtualenv '$envName' isn't found")
         }
@@ -133,13 +132,13 @@ class PythonEnvsExtension {
      * @see #python
      * @param urlToArchive URL link to archive with environment
      */
-    void envFromZip(final String envName,
+    void pythonFromZip(final String envName,
                     final URL urlToArchive,
                     final String type = null,
                     final List<String> packages = null) {
-        envsFromZip << new PythonEnv(
+        pythonsFromZip << new Python(
                 envName,
-                envsDirectory,
+                bootstrapDirectory,
                 EnvType.fromString(type),
                 null,
                 null,
@@ -158,8 +157,8 @@ class PythonEnvsExtension {
         links << new CreateLink(linkPath, sourcePath)
     }
 
-    private List<PythonEnv> allEnvs() {
-        return pythonEnvs + condaEnvs + envsFromZip
+    private List<Python> allPythons() {
+        return pythons + condaEnvs + pythonsFromZip
     }
 
     String condaPackage(final String packageName) {
@@ -187,7 +186,7 @@ enum EnvType {
 }
 
 
-class PythonEnv {
+class Python {
     final String name
     final File envDir
     final EnvType type
@@ -196,13 +195,13 @@ class PythonEnv {
     final List<String> packages
     final URL url
 
-    PythonEnv(String name,
-              File dir,
-              EnvType type = null,
-              String version = null,
-              Boolean is64 = true,
-              List<String> packages = null,
-              URL url = null) {
+    Python(String name,
+           File dir,
+           EnvType type = null,
+           String version = null,
+           Boolean is64 = true,
+           List<String> packages = null,
+           URL url = null) {
         this.name = name
         this.envDir = new File(dir, name)
         this.type = type
@@ -214,7 +213,7 @@ class PythonEnv {
 }
 
 
-class CondaEnv extends PythonEnv {
+class CondaEnv extends Python {
     final List<String> condaPackages
 
     CondaEnv(String name,
@@ -229,10 +228,10 @@ class CondaEnv extends PythonEnv {
 }
 
 
-class VirtualEnv extends PythonEnv {
-    final PythonEnv sourceEnv
+class VirtualEnv extends Python {
+    final Python sourceEnv
 
-    VirtualEnv(String name, File dir, PythonEnv sourceEnv, List<String> packages) {
+    VirtualEnv(String name, File dir, Python sourceEnv, List<String> packages) {
         super(name, dir, EnvType.VIRTUALENV, null, null, packages)
         this.sourceEnv = sourceEnv
     }
