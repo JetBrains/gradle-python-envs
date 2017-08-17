@@ -1,6 +1,7 @@
 package com.jetbrains.python.envs
 
 import java.nio.file.Path
+import java.nio.file.Paths
 
 /**
  * Project extension to configure Python build environment.
@@ -147,22 +148,14 @@ class PythonEnvsExtension {
         )
     }
 
-    void textfile(final File file, final String content) {
-        files << new CreateFile(file, content)
-    }
-
     void textfile(final String path, final String content) {
-        textfile(new File(envsDirectory, path), content)
+        files << new CreateFile(new File(path), content)
     }
 
-    void link(final Path link, final Path source) {
-        links << new CreateLink(link, source)
-    }
-
-    void link(final String linkString, final String sourceString) {
-        Path linkPath = new File(envsDirectory, linkString).toPath()
-        Path sourcePath = new File(envsDirectory, sourceString).toPath()
-        link(linkPath, sourcePath)
+    void link(final String linkString, final String sourceString, final File baseDir = null) {
+        Path linkPath = Paths.get(baseDir ? baseDir.toString() : '', linkString)
+        Path sourcePath = Paths.get(baseDir ? baseDir.toString() : '', sourceString)
+        links << new CreateLink(linkPath, sourcePath)
     }
 
     private List<PythonEnv> allEnvs() {
