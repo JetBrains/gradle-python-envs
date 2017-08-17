@@ -356,14 +356,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             }
 
                             pipInstall(project, env, env.packages)
-
-                            if (env.linkWithVersion && Os.isFamily(Os.FAMILY_WINDOWS)) {
-                                // *nix envs have such links already
-                                Path source = getExecutable("python", env).toPath()
-                                Path dest = getExecutable("python${env.version}", env).toPath()
-
-                                Files.createLink(dest, source)
-                            }
                         }
                     }
                 }
@@ -478,11 +470,19 @@ class PythonEnvsPlugin implements Plugin<Project> {
             Task create_files_task = project.tasks.create(name: 'create_files') {
                 onlyIf { !envs.files.empty }
 
-                envs.files.each { e ->
-                    File f = new File(envs.envsDirectory, e.path)
+                doLast {
+                    envs.files.each { e ->
+                        e.file.write(e.content)
+                    }
+                }
+            }
 
-                    doLast {
-                        f.write(e.content)
+            Task create_links_task = project.tasks.create(name: 'create_links') {
+                onlyIf { !envs.links.empty }
+
+                doLast {
+                    envs.links.each { e ->
+                        Files.createLink(e.link, e.source)
                     }
                 }
             }
@@ -492,7 +492,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         conda_envs_task,
                         envs_from_zip_task,
                         virtualenvs_task,
-                        create_files_task
+                        create_files_task,
+                        create_links_task
             }
 
         }

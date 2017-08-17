@@ -1,5 +1,8 @@
 package com.jetbrains.python.envs
 
+import java.nio.file.Path
+import java.nio.file.Paths
+
 /**
  * Project extension to configure Python build environment.
  *
@@ -21,6 +24,7 @@ class PythonEnvsExtension {
     List<VirtualEnv> virtualEnvs = []
     List<PythonEnv> envsFromZip = []
     List<CreateFile> files = []
+    List<CreateLink> links = []
 
     Boolean _64Bits = true  // By default 64 bit envs should be installed
     String CONDA_PREFIX = "CONDA_"
@@ -37,20 +41,29 @@ class PythonEnvsExtension {
         pythonEnvs << new PythonEnv(envName, envsDirectory, EnvType.PYTHON, version, is64(architecture), packages)
     }
 
+    void python(final String envName,
+                final String version,
+                final List<String> packages) {
+        python(envName, version, null, packages)
+    }
+
     /**
      * @see #python
-     * @param linkWithVersion if true, binary will be linked with version name.
-     * I.e. "python" will be have "python2.7" link (same for exe file). Used for envs line tox.
      */
     void conda(final String envName,
                final String version,
                final String architecture = null,
-               final List<String> packages = null,
-               final boolean linkWithVersion = false) {
+               final List<String> packages = null) {
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
                                              .collect { it.substring(CONDA_PREFIX.length()) }
-        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages, linkWithVersion)
+        condaEnvs << new CondaEnv(envName, envsDirectory, version, is64(architecture), pipPackages, condaPackages)
+    }
+
+    void conda(final String envName,
+               final String version,
+               final List<String> packages) {
+        conda(envName, version, null, packages)
     }
 
     /**
@@ -63,7 +76,7 @@ class PythonEnvsExtension {
     /**
      * @see #python
      */
-    void pypy(final String envName, final List<String> packages = null, final String version = null) {
+    void pypy(final String envName, final String version = null, final List<String> packages = null) {
         pythonEnvs << new PythonEnv(
                 envName,
                 envsDirectory,
@@ -74,12 +87,16 @@ class PythonEnvsExtension {
         )
     }
 
+    void pypy(final String envName, final List<String> packages) {
+        pypy(envName, null, packages)
+    }
+
     /**
      * @see #python
      */
     void ironpython(final String envName,
-                    final List<String> packages = null,
                     final String architecture = null,
+                    final List<String> packages = null,
                     final URL urlToArchive = null) {
         URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
         envsFromZip << new PythonEnv(
@@ -91,6 +108,12 @@ class PythonEnvsExtension {
                 packages,
                 urlToArchive ?: urlToIronPythonZip
         )
+    }
+
+    void ironpython(final String envName,
+                    final List<String> packages,
+                    final URL urlToArchive = null) {
+        ironpython(envName, null, packages, urlToArchive)
     }
 
     /**
@@ -126,7 +149,13 @@ class PythonEnvsExtension {
     }
 
     void textfile(final String path, final String content) {
-        files << new CreateFile(path, content)
+        files << new CreateFile(new File(path), content)
+    }
+
+    void link(final String linkString, final String sourceString, final File baseDir = null) {
+        Path linkPath = Paths.get(baseDir ? baseDir.toString() : '', linkString)
+        Path sourcePath = Paths.get(baseDir ? baseDir.toString() : '', sourceString)
+        links << new CreateLink(linkPath, sourcePath)
     }
 
     private List<PythonEnv> allEnvs() {
@@ -187,18 +216,15 @@ class PythonEnv {
 
 class CondaEnv extends PythonEnv {
     final List<String> condaPackages
-    final boolean linkWithVersion
 
     CondaEnv(String name,
              File dir,
              String version,
              Boolean is64,
              List<String> packages,
-             List<String> condaPackages,
-             boolean linkWithVersion) {
+             List<String> condaPackages) {
         super(name, dir, EnvType.CONDA, version, is64, packages)
         this.condaPackages = condaPackages
-        this.linkWithVersion = linkWithVersion
     }
 }
 
@@ -214,11 +240,22 @@ class VirtualEnv extends PythonEnv {
 
 
 class CreateFile {
-    final String path
+    final File file
     final String content
 
-    CreateFile(String path, String content) {
-        this.path = path
+    CreateFile(File file, String content) {
+        this.file = file
         this.content = content
+    }
+}
+
+
+class CreateLink {
+    final Path link
+    final Path source
+
+    CreateLink(Path link, Path source) {
+        this.link = link
+        this.source = source
     }
 }

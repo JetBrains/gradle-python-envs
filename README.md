@@ -41,35 +41,46 @@ envs {
   // by default if architecture isn't specified - 64 bit one is used
   // _64Bits = true
   
+  //python "envName", "version", [<packages>]
+  python "python35_64", "3.5.3", ["django==1.9"]
   //python "envName", "version", "architecture", [<packages>]
-  python "python35_64", "3.5.3", "64", ["django==1.9"]
   python "python36_32", "3.6.2", "32", ["django==1.10"]
   //virtualenv "virtualEnvName", "sourceEnvName", [<packages>]
   virtualenv "envPython35", "python35_64", ["pytest"]
   virtualenv "envPython36", "python36_32", ["behave", "requests"]
 
-  //conda "envName", "version", "architecture", [<packages>], createLinkWithVersion?
-  conda "django19", "2.7", null, ["django==1.9"], true
-  conda "conda34", "3.4", "64", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"], true
-  conda "pyqt_env", "2.7", null, [condaPackage("pyqt")], false
+  //conda "envName", "version", [<packages>]
+  conda "django19", "2.7", ["django==1.9"]
+  conda "pyqt_env", "2.7", [condaPackage("pyqt")]
+  //conda "envName", "version", "architecture", [<packages>]
+  conda "conda34", "3.4", "32", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
   virtualenv "envConda34", "conda34", ["django==1.9"]
+
+  if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+    // This links are used for envs like tox; *nix envs have such links already
+    link "django19/bin/python2.7.exe", "django19/bin/python.exe"
+    link "conda34/bin/python3.4.exe", "conda34/bin/python.exe"
+  }
 
   //jython "envName", [<packages>]
   jython "jython"
   virtualenv "envJython", "jython", ["django==1.8"]
   
   if (Os.isFamily(Os.FAMILY_UNIX)) {
-    //pypy "envName", [<packages>], "version"
-    //version should be in accordance with python-build
-    
+    //pypy "envName", [<packages>]
     pypy "pypy2", ["django"]
     virtualenv "envPypy2", "pypy2", ["pytest"]
-    pypy "pypy3", ["nose"], "pypy3.5-5.8.0"
+    //pypy "envName", "version", [<packages>]
+    //version should be in accordance with python-build
+    pypy "pypy3", "pypy3.5-5.8.0", ["nose"]
     virtualenv "envPypy3", "pypy3", ["django"]    
   }
   
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-    ironpython "ironpython", ["requests"], "32"
+    //ironpython "envName", [<packages>]
+    ironpython "ironpython64", ["requests"]
+    //ironpython "envName", "architecture", [<packages>]
+    ironpython "ironpython32", "32", ["requests"]
     // ironpython doesn't support virtualenvs at all
   }
 }
@@ -80,9 +91,6 @@ Then invoke the `build_envs` task.
 This will download and install the latest versions of Miniconda both for 32 and 64 bits to `buildDir/bootstrap`.
 
 Then it will create several envs in `buildDir/envs` and virtualenvs in `buildDir/virtualenvs`, installing all the libraries listed correspondingly. Packages in list are installed with `pip install` command. If the function `condaPackage()` was called for package name, it will be installed with `conda install` command. It enables to install, for example, PyQt in env.
-
-If boolean parameter createLinkWithVersion is true, binary will be linked with version name, i.e. "python" will have "python2.7"
-link (same for exe file). Used for envs like tox.
 
 
 License
