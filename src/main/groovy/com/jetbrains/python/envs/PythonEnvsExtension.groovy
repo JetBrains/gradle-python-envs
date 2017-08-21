@@ -11,7 +11,7 @@ class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
     URL zipRepository
-    Boolean conditionToUseZipsFromRepository = false
+    Boolean shouldUseZipsFromRespository = false
 
     String minicondaVersion = "latest"
     protected File minicondaExecutable32
@@ -39,10 +39,10 @@ class PythonEnvsExtension {
                 final String version,
                 final String architecture = null,
                 final List<String> packages = null) {
-        if (!zipRepository || !conditionToUseZipsFromRepository) {
-            pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
-        } else if (conditionToUseZipsFromRepository) {
+        if (zipRepository && shouldUseZipsFromRespository) {
             pythonFromZip envName, getUrlFromRepository("python", version, architecture), "python", packages
+        } else {
+            pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
         }
     }
 
