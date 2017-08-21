@@ -36,7 +36,7 @@ envs {
   // Download python zips when Windows is used from http://repository.net/%archieveName%,
   // where {archieveName} is python-{version}-{architecture}.zip
   zipRepository = new URL("http://repository.net/")
-  conditionToUseZipsFromRepository = Os.isFamily(Os.FAMILY_WINDOWS)
+  shouldUseZipsFromRespository = Os.isFamily(Os.FAMILY_WINDOWS)
   
   // List of packages to install in bootstrapped miniconda's environments
   condaBasePackages = ["requests"]
