@@ -12,7 +12,7 @@ but in addition to creating Conda envs it provides:
 4. Creating Python envs for Unix with [python-build](https://github.com/pyenv/pyenv/tree/master/plugins/python-build) for Unix
 <br>N.B.: [Common build problems](https://github.com/pyenv/pyenv/wiki/Common-build-problems) article from pyenv
 5. Creating Python envs for Windows by installing msi or exe from [python.org](https://www.python.org/). 
-<br>N.B.: Windows UAC should be switched off, otherwise - use Env from zip
+<br>N.B.: Windows UAC should be switched off, otherwise - use Python from zip
 6. Creating Jython environments
 7. Creating PyPy environments (only Unix is supported, by default pypy2.7-5.8.0 version is used)
 8. Creating IronPython environments (only Windows is supported, by default [2.7.7 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.7) is used)
@@ -32,6 +32,11 @@ and configure the associated extension:
 envs {
   bootstrapDirectory = new File(buildDir, 'bootstrap')
   envsDirectory = new File(buildDir, 'envs')
+  
+  // Download python zips when Windows is used from http://repository.net/%archieveName%,
+  // where {archieveName} is python-{version}-{architecture}.zip
+  zipRepository = new URL("http://repository.net/")
+  conditionToUseZipsFromRepository = Os.isFamily(Os.FAMILY_WINDOWS)
   
   // List of packages to install in bootstrapped miniconda's environments
   condaBasePackages = ["requests"]
