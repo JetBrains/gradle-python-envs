@@ -493,7 +493,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 doLast {
                     envs.files.each { e ->
-                        e.file.write(e.content)
+                        if (e.file.exists()) {
+                            project.logger.warn("File $e.file already exists")
+                        } else {
+                            project.logger.quiet("Creating file $e.file with the following content:\n$e.content")
+                            e.file.write(e.content)
+                        }
                     }
                 }
             }
@@ -503,7 +508,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 doLast {
                     envs.links.each { e ->
-                        Files.createLink(e.link, e.source)
+                        if (e.link.toFile().exists()) {
+                            project.logger.warn("Link $e.link already exists")
+                        } else if (!e.source.toFile().exists()) {
+                            project.logger.warn("Source file $e.source doesn't exist")
+                        } else {
+                            project.logger.quiet("Creating link $e.link pointing to $e.source")
+                            Files.createLink(e.link, e.source)
+                        }
                     }
                 }
             }

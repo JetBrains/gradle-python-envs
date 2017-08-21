@@ -56,8 +56,8 @@ envs {
 
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
     // This links are used for envs like tox; *nix envs have such links already
-    link "django19/bin/python2.7.exe", "django19/bin/python.exe"
-    link "conda34/bin/python3.4.exe", "conda34/bin/python.exe"
+    link "bin/python2.7.exe", "bin/python.exe", new File(envsDirectory, "django19")
+    link "bin/python3.4.exe", "bin/python.exe", new File(envsDirectory, "conda34")
   }
 
   //jython "envName", [<packages>]
@@ -86,9 +86,11 @@ envs {
 
 Then invoke the `build_envs` task. 
 
-This will download and install the latest versions of Miniconda both for 32 and 64 bits to `buildDir/bootstrap`.
+This will download and install the latest versions of Miniconda both for 32 and 64 bits and specified python's interpreters (python, jython, pypy, ironpython) to `buildDir/bootstrap`.
 
-Then it will create several envs in `buildDir/envs` and virtualenvs in `buildDir/virtualenvs`, installing all the libraries listed correspondingly. Packages in list are installed with `pip install` command. If the function `condaPackage()` was called for package name, it will be installed with `conda install` command. It enables to install, for example, PyQt in env.
+Then it will create several conda anv virtual envs in `buildDir/envs`.
+
+Libraries listed will be installed correspondingly. Packages in list are installed with `pip install` command. If the function `condaPackage()` was called for package name, it will be installed with `conda install` command. It enables to install, for example, PyQt in env.
 
 
 License
