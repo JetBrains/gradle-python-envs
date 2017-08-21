@@ -10,6 +10,8 @@ import java.nio.file.Paths
 class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
+    URL zipRepository
+    Boolean shouldUseZipsFromRespository = false
 
     String minicondaVersion = "latest"
     protected File minicondaExecutable32
@@ -37,7 +39,11 @@ class PythonEnvsExtension {
                 final String version,
                 final String architecture = null,
                 final List<String> packages = null) {
-        pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
+        if (zipRepository && shouldUseZipsFromRespository) {
+            pythonFromZip envName, getUrlFromRepository("python", version, architecture), "python", packages
+        } else {
+            pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
+        }
     }
 
     void python(final String envName,
@@ -133,9 +139,9 @@ class PythonEnvsExtension {
      * @param urlToArchive URL link to archive with environment
      */
     void pythonFromZip(final String envName,
-                    final URL urlToArchive,
-                    final String type = null,
-                    final List<String> packages = null) {
+                       final URL urlToArchive,
+                       final String type = null,
+                       final List<String> packages = null) {
         pythonsFromZip << new Python(
                 envName,
                 bootstrapDirectory,
@@ -167,6 +173,11 @@ class PythonEnvsExtension {
 
     private Boolean is64(final String architecture) {
         return (architecture == null) ? _64Bits : !(architecture == "32")
+    }
+
+    private URL getUrlFromRepository(final String type, final String version, final String architecture = null) {
+        if (!zipRepository) return null
+        return zipRepository.toURI().resolve("$type-$version-${architecture ?: _64Bits ? "64" : "32"}.zip").toURL()
     }
 }
 
