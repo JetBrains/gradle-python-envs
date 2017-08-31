@@ -11,7 +11,12 @@ import org.gradle.util.VersionNumber
 import java.nio.file.Files
 
 class PythonEnvsPlugin implements Plugin<Project> {
-    String os = System.getProperty('os.name').replaceAll(' ', '')
+    private static String osName = System.getProperty('os.name').replaceAll(' ', '').with {
+        return it.contains("Windows") ? "Windows" : it
+    }
+
+    private static Boolean isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
+    private static Boolean isUnix = Os.isFamily(Os.FAMILY_UNIX)
 
     private void resolveJython(Project project) {
         project.dependencies {
@@ -20,12 +25,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private void resolveMiniconda(Project project, boolean is64, PythonEnvsExtension myExt) {
-        def myExtension = "sh"
-        if (os.contains("Windows")) {
-            os = "Windows"
-            myExtension = "exe"
-        }
-        def myName = "Miniconda2"
+        String myExtension = isWindows ? "exe" : "sh"
+
+        String myName = "Miniconda2"
         // versions <= 3.16 were named "Miniconda-${version}"
         // But latest in special case: it should always use Miniconda2, even VersionNumber.parse parses latest as 0.0.0
         if (myExt.minicondaVersion != "latest" && VersionNumber.parse(myExt.minicondaVersion) <= VersionNumber.parse("3.16")) {
@@ -37,7 +39,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     artifact {
                         name = myName
                         type = myExtension
-                        classifier = "$os-x86_64"
+                        classifier = "$osName-x86_64"
                         extension = myExtension
                     }
                 }
@@ -46,7 +48,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     artifact {
                         name = myName
                         type = myExtension
-                        classifier = "$os-x86"
+                        classifier = "$osName-x86"
                         extension = myExtension
                     }
                 }
@@ -77,7 +79,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 doLast {
                     project.logger.quiet("Bootstraping to $installDir")
                     project.exec {
-                        if (os.contains("Windows")) {
+                        if (isWindows) {
                             commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
                         } else {
                             commandLine "bash", conf.singleFile, "-b", "-p", installDir
@@ -94,7 +96,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         project.tasks.create(name: 'install_python_build') {
             outputs.dir(installDir)
             onlyIf {
-                !installDir.exists() && Os.isFamily(Os.FAMILY_UNIX)
+                !installDir.exists() && isUnix
             }
 
             doLast {
@@ -137,15 +139,15 @@ class PythonEnvsPlugin implements Plugin<Project> {
         switch (type ?: env.type) {
             case [EnvType.PYTHON, EnvType.CONDA]:
                 if (executable in ["pip", "virtualenv", "conda"]) {
-                    pathString = Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/${executable}.exe" : "bin/${executable}"
+                    pathString = isWindows ? "Scripts/${executable}.exe" : "bin/${executable}"
                 } else if (executable.startsWith("python")) {
-                    pathString = "${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                    pathString = "${executable}${isWindows ? '.exe' : ''}"
                 } else {
                     throw new RuntimeException("$executable is not supported for $env.type yet")
                 }
                 break
             case [EnvType.JYTHON, EnvType.PYPY]:
-                pathString = "bin/${executable}${Os.isFamily(Os.FAMILY_WINDOWS) ? '.exe' : ''}"
+                pathString = "bin/${executable}${isWindows ? '.exe' : ''}"
                 break
             case EnvType.IRONPYTHON:
                 if (executable == "ipy") {
@@ -155,7 +157,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
                 break
             case EnvType.VIRTUALENV:
-                pathString = Os.isFamily(Os.FAMILY_WINDOWS) ? "Scripts/${executable}.exe" : "bin/${executable}"
+                pathString = isWindows ? "Scripts/${executable}.exe" : "bin/${executable}"
                 break
             default:
                 throw new RuntimeException("$env.type env type is not supported yet")
@@ -178,7 +180,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     private Task createPythonUnix(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
-                !env.envDir.exists() && Os.isFamily(Os.FAMILY_UNIX)
+                !env.envDir.exists() && isUnix
             }
 
             dependsOn "install_python_build"
@@ -206,7 +208,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     private Task createPythonWindows(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
-                !env.envDir.exists() && Os.isFamily(Os.FAMILY_WINDOWS)
+                !env.envDir.exists() && isWindows
             }
 
             doLast {
@@ -321,22 +323,22 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 envs.pythons.each { env ->
                     switch (env.type) {
                         case EnvType.PYTHON:
-                            if (Os.isFamily(Os.FAMILY_UNIX)) {
+                            if (isUnix) {
                                 dependsOn createPythonUnix(project, env)
-                            } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+                            } else if (isWindows) {
                                 dependsOn createPythonWindows(project, env)
                             } else {
-                                project.logger.error("Something is wrong with os: $os")
+                                project.logger.error("Something is wrong with os: $osName")
                             }
                             break
                         case EnvType.JYTHON:
                             dependsOn createJython(project, env)
                             break
                         case EnvType.PYPY:
-                            if (Os.isFamily(Os.FAMILY_UNIX)) {
+                            if (isUnix) {
                                 dependsOn createPythonUnix(project, env)
                             } else {
-                                project.logger.warn("PyPy installation isn't supported for $os, please use envFromZip instead")
+                                project.logger.warn("PyPy installation isn't supported for $osName, please use envFromZip instead")
                             }
                             break
                         default:

@@ -189,7 +189,7 @@ enum EnvType {
     PYPY,
     IRONPYTHON,
     VIRTUALENV
-    // TODO non-python virtuaenv?
+    // TODO non-python virtualenv?
 
     static fromString(String type) {
         return type == null ? null : valueOf(type.toUpperCase())
