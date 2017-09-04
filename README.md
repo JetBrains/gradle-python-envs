@@ -36,7 +36,7 @@ envs {
   // Download python zips when Windows is used from http://repository.net/%archieveName%,
   // where {archieveName} is python-{version}-{architecture}.zip
   zipRepository = new URL("http://repository.net/")
-  shouldUseZipsFromRespository = Os.isFamily(Os.FAMILY_WINDOWS)
+  shouldUseZipsFromRepository = Os.isFamily(Os.FAMILY_WINDOWS)
   
   // by default if architecture isn't specified - 64 bit one is used
   // _64Bits = true

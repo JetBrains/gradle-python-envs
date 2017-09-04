@@ -11,7 +11,7 @@ class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
     URL zipRepository
-    Boolean shouldUseZipsFromRespository = false
+    Boolean shouldUseZipsFromRepository = false
 
     String condaDefaultVersion = "Miniconda2-latest"
     String pypyDefaultVersion = "pypy2.7-5.8.0"
@@ -36,7 +36,7 @@ class PythonEnvsExtension {
                 final String version,
                 final String architecture = null,
                 final List<String> packages = null) {
-        if (zipRepository && shouldUseZipsFromRespository) {
+        if (zipRepository && shouldUseZipsFromRepository) {
             pythonFromZip envName, getUrlFromRepository("python", version, architecture), "python", packages
         } else {
             pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
