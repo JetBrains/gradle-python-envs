@@ -6,17 +6,17 @@ Gradle plugin to create Python envs.
 This plugin is based on [gradle-miniconda-plugin](https://github.com/palantir/gradle-miniconda-plugin),
 but in addition to creating Conda envs it provides:
 
-1. Silent Miniconda installation
-2. A convenient DSL to specify target Python environments 
-3. Working with both 32 and 64 bit versions of Miniconda
-4. Creating Python envs for Unix with [python-build](https://github.com/pyenv/pyenv/tree/master/plugins/python-build) for Unix
+1. A convenient DSL to specify target Python environments 
+2. Creating Python envs for Unix with [python-build](https://github.com/pyenv/pyenv/tree/master/plugins/python-build) for Unix
 <br>N.B.: [Common build problems](https://github.com/pyenv/pyenv/wiki/Common-build-problems) article from pyenv
-5. Creating Python envs for Windows by installing msi or exe from [python.org](https://www.python.org/). 
+3. Creating Python envs for Windows by installing msi or exe from [python.org](https://www.python.org/). 
 <br>N.B.: Windows UAC should be switched off, otherwise - use Python from zip
+4. Both Anaconda and Miniconda support (32 and 64 bit versions)
+5. Creating Conda envrionments, conda package installation support
 6. Creating Jython environments
 7. Creating PyPy environments (only Unix is supported, by default pypy2.7-5.8.0 version is used)
 8. Creating IronPython environments (only Windows is supported, by default [2.7.7 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.7) is used)
-9. Virtualenv creation from any environment created
+9. Virtualenv creation from any python environment created
 10. Python from zip creation: downloading archive from specified url, unpacking and preparing to work with
 11. Package installation for any environment or virtualenv 
 
@@ -38,9 +38,6 @@ envs {
   zipRepository = new URL("http://repository.net/")
   shouldUseZipsFromRespository = Os.isFamily(Os.FAMILY_WINDOWS)
   
-  // List of packages to install in bootstrapped miniconda's environments
-  condaBasePackages = ["requests"]
-  
   // by default if architecture isn't specified - 64 bit one is used
   // _64Bits = true
   
@@ -52,12 +49,21 @@ envs {
   virtualenv "envPython35", "python35_64", ["pytest"]
   virtualenv "envPython36", "python36_32", ["behave", "requests"]
 
+  //conda "envName", "version", "architecture"
+  conda "Miniconda3", "Miniconda3-latest", "64"
   //conda "envName", "version", [<packages>]
-  conda "django19", "2.7", ["django==1.9"]
-  conda "pyqt_env", "2.7", [condaPackage("pyqt")]
+  conda "Anaconda2", "Anaconda2-4.4.0", [condaPackage("PyQt")]
   //conda "envName", "version", "architecture", [<packages>]
-  conda "conda34", "3.4", "32", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
-  virtualenv "envConda34", "conda34", ["django==1.9"]
+  conda "Anaconda3", "Anaconda3-4.4.0", "64", ["django==1.8"]
+  
+  //condaenv "envName", "sourceEnvName", "version", [<packages>]
+  condaenv "django19", "Miniconda3", "2.7", ["django==1.9"]
+  //condaenv "envName", "version", [<packages>]
+  //Here will be created additional "Miniconda2-latest" (or another one specified in condaDefaultVersion value) 
+  //conda interpreter to be bootstraped
+  condaenv "pyqt_env", "2.7", [condaPackage("pyqt")]
+  //condaenv "envName", "sourceEnvName", "version", "architecture", [<packages>]
+  condaenv "conda34", "Miniconda3", "3.4", "32", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
 
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
     // This links are used for envs like tox; *nix envs have such links already
@@ -91,9 +97,9 @@ envs {
 
 Then invoke the `build_envs` task. 
 
-This will download and install the latest versions of Miniconda both for 32 and 64 bits and specified python's interpreters (python, jython, pypy, ironpython) to `buildDir/bootstrap`.
+This will download and install specified python's interpreters (python, anaconda and miniconda, jython, pypy, ironpython) to `buildDir/bootstrap`.
 
-Then it will create several conda anv virtual envs in `buildDir/envs`.
+Then it will create several conda and virtual envs in `buildDir/envs`.
 
 Libraries listed will be installed correspondingly. Packages in list are installed with `pip install` command. If the function `condaPackage()` was called for package name, it will be installed with `conda install` command. It enables to install, for example, PyQt in env.
 

@@ -4,7 +4,6 @@ import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.artifacts.Configuration
 import org.gradle.api.tasks.StopExecutionException
 import org.gradle.util.VersionNumber
 
@@ -24,77 +23,16 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void resolveMiniconda(Project project, boolean is64, PythonEnvsExtension myExt) {
-        String myExtension = isWindows ? "exe" : "sh"
+    private static URL getUrlToDownloadConda(Conda conda) {
+        final String repository = (conda.version.toLowerCase().contains("miniconda")) ? "miniconda" : "archive"
+        final String arch = "$osName-x86${conda.is64 ? '_64' : ''}"
+        final String ext = isWindows ? "exe" : "sh"
 
-        String myName = "Miniconda2"
-        // versions <= 3.16 were named "Miniconda-${version}"
-        // But latest in special case: it should always use Miniconda2, even VersionNumber.parse parses latest as 0.0.0
-        if (myExt.minicondaVersion != "latest" && VersionNumber.parse(myExt.minicondaVersion) <= VersionNumber.parse("3.16")) {
-            myName = "Miniconda"
-        }
-        project.dependencies {
-            if (is64) {
-                minicondaInstaller64(group: "miniconda", name: myName, version: myExt.minicondaVersion) {
-                    artifact {
-                        name = myName
-                        type = myExtension
-                        classifier = "$osName-x86_64"
-                        extension = myExtension
-                    }
-                }
-            } else {
-                minicondaInstaller32(group: "miniconda", name: myName, version: myExt.minicondaVersion) {
-                    artifact {
-                        name = myName
-                        type = myExtension
-                        classifier = "$osName-x86"
-                        extension = myExtension
-                    }
-                }
-            }
-        }
-    }
-
-    private void createBootstrapCondaTask(Project project, PythonEnvsExtension envs, String minicondaVersion) {
-        for (architecture in ["32", "64"]){
-            project.tasks.create("Bootstrap MINICONDA $architecture bit") {
-                Configuration conf = null
-                File installDir = new File(envs.bootstrapDirectory, "miniconda_${minicondaVersion}_${architecture}")
-                File condaExecutable = getExecutable("conda", null, installDir, EnvType.CONDA)
-
-                if (architecture == "64") {
-                    conf = project.configurations.minicondaInstaller64
-                    envs.minicondaExecutable64 = condaExecutable
-                } else {
-                    conf = project.configurations.minicondaInstaller32
-                    envs.minicondaExecutable32 = condaExecutable
-                }
-
-                outputs.dir(installDir)
-                onlyIf {
-                    !(installDir.exists())
-                }
-
-                doLast {
-                    project.logger.quiet("Bootstraping to $installDir")
-                    project.exec {
-                        if (isWindows) {
-                            commandLine conf.singleFile, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$installDir"
-                        } else {
-                            commandLine "bash", conf.singleFile, "-b", "-p", installDir
-                        }
-                    }
-
-                    condaInstall(project, condaExecutable, installDir, envs.condaBasePackages)
-                }
-            }
-        }
+        return new URL("https://repo.continuum.io/$repository/${conda.version}-$arch.$ext")
     }
 
     private void createInstallPythonBuildTask(Project project, File installDir) {
         project.tasks.create(name: 'install_python_build') {
-            outputs.dir(installDir)
             onlyIf {
                 !installDir.exists() && isUnix
             }
@@ -168,7 +106,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private static File getPipFile(Project project) {
         new File(project.buildDir, "get-pip.py").with { file ->
-            if (!file.exists()){
+            if (!file.exists()) {
                 project.ant.get(dest: file) {
                     url(url: "https://bootstrap.pypa.io/get-pip.py")
                 }
@@ -283,38 +221,18 @@ class PythonEnvsPlugin implements Plugin<Project> {
         PythonEnvsExtension envs = project.extensions.create("envs", PythonEnvsExtension.class)
 
         project.repositories {
-            ivy {
-                url "http://repo.continuum.io"
-                layout "pattern", {
-                    artifact "[organisation]/[module]-[revision]-[classifier].[ext]"
-                }
-            }
             mavenCentral()
         }
 
         project.configurations {
-            minicondaInstaller32
-            minicondaInstaller64
             jython
         }
 
         project.afterEvaluate {
-            Configuration conf32 = project.configurations.minicondaInstaller32
-            conf32.incoming.beforeResolve {
-                resolveMiniconda(project, false, envs)
-            }
-
-            Configuration conf64 = project.configurations.minicondaInstaller64
-            conf64.incoming.beforeResolve {
-                resolveMiniconda(project, true, envs)
-            }
-
-            Configuration jython = project.configurations.jython
-            jython.incoming.beforeResolve {
+            project.configurations.jython.incoming.beforeResolve {
                 resolveJython(project)
             }
 
-            createBootstrapCondaTask(project, envs, envs.minicondaVersion)
             createInstallPythonBuildTask(project, new File(project.buildDir, "python-build"))
 
             Task python_task = project.tasks.create(name: 'build_pythons') {
@@ -343,34 +261,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             break
                         default:
                             project.logger.error("$env.type isn't supported yet")
-                    }
-                }
-            }
-
-            Task conda_envs_task = project.tasks.create(name: 'build_conda_envs') {
-                onlyIf { !envs.condaEnvs.empty }
-
-                envs.condaEnvs.each { env ->
-                    dependsOn project.tasks.create("Create conda env '$env.name'") {
-                        dependsOn "Bootstrap MINICONDA ${env.is64 ? "64" : "32"} bit"
-
-                        outputs.dir(env.envDir)
-                        onlyIf {
-                            !env.envDir.exists()
-                        }
-
-                        File condaExecutable = env.is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
-
-                        doLast {
-                            project.logger.quiet("Creating condaenv '$env.name' at $env.envDir directory")
-                            project.exec {
-                                executable condaExecutable
-                                args "create", "-p", env.envDir, "-y", "python=$env.version"
-                                args env.condaPackages
-                            }
-
-                            pipInstall(project, env, env.packages)
-                        }
                     }
                 }
             }
@@ -405,7 +295,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                 env.envDir.with { dir ->
                                     if (dir.listFiles().length == 1) {
                                         File intermediateDir = dir.listFiles().last()
-                                        if (!intermediateDir.isDirectory()){
+                                        if (!intermediateDir.isDirectory()) {
                                             throw new RuntimeException("Archive is wrong, $env.url")
                                         }
                                         project.ant.move(todir: dir) {
@@ -452,7 +342,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             Task virtualenvs_task = project.tasks.create(name: 'build_virtual_envs') {
-                shouldRunAfter python_task, conda_envs_task, python_from_zip_task
+                shouldRunAfter python_task, python_from_zip_task
 
                 onlyIf { !envs.virtualEnvs.empty }
 
@@ -470,18 +360,74 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         doLast {
                             project.logger.quiet("Installing needed virtualenv package")
 
-                            if (env.sourceEnv.type == EnvType.CONDA) {
-                                File condaExecutable = env.sourceEnv.is64 ? envs.minicondaExecutable64 : envs.minicondaExecutable32
-                                condaInstall(project, condaExecutable, env.sourceEnv.envDir, ["virtualenv"])
-                            } else {
-                                pipInstall(project, env.sourceEnv, ["virtualenv"])
-                            }
+                            pipInstall(project, env.sourceEnv, ["virtualenv"])
 
                             project.logger.quiet("Creating virtualenv from $env.sourceEnv.name at $env.envDir")
                             project.exec {
                                 executable getExecutable("virtualenv", env.sourceEnv)
                                 args env.envDir, "--always-copy"
                                 workingDir env.sourceEnv.envDir
+                            }
+
+                            pipInstall(project, env, env.packages)
+                        }
+                    }
+                }
+            }
+
+            Task conda_task = project.tasks.create(name: "build_condas") {
+                onlyIf { !envs.condas.empty }
+
+                envs.condas.each { Conda env ->
+                    dependsOn project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+                        onlyIf {
+                            !env.envDir.exists()
+                        }
+
+                        doLast {
+                            URL urlToConda = getUrlToDownloadConda(env)
+                            File installer = new File(project.buildDir, urlToConda.toString().split("/").last())
+
+                            if (!installer.exists()) {
+                                project.logger.quiet("Downloading $installer.name")
+                                project.ant.get(dest: installer) {
+                                    url(url: urlToConda)
+                                }
+                            }
+
+                            project.logger.quiet("Bootstraping to $env.envDir")
+                            project.exec {
+                                if (isWindows) {
+                                    commandLine installer, "/InstallationType=JustMe", "/AddToPath=0", "/RegisterPython=0", "/S", "/D=$env.envDir"
+                                } else {
+                                    commandLine "bash", installer, "-b", "-p", env.envDir
+                                }
+                            }
+
+                            pipInstall(project, env, env.packages)
+                            condaInstall(project, env, env.condaPackages)
+                        }
+                    }
+                }
+            }
+
+            Task conda_envs_task = project.tasks.create(name: 'build_conda_envs') {
+                shouldRunAfter conda_task
+
+                onlyIf { !envs.condaEnvs.empty }
+
+                envs.condaEnvs.each { env ->
+                    dependsOn project.tasks.create("Create conda env '$env.name'") {
+                        onlyIf {
+                            !env.envDir.exists()
+                        }
+
+                        doLast {
+                            project.logger.quiet("Creating condaenv '$env.name' at $env.envDir directory")
+                            project.exec {
+                                executable getExecutable("conda", env.sourceEnv)
+                                args "create", "-p", env.envDir, "-y", "python=$env.version"
+                                args env.condaPackages
                             }
 
                             pipInstall(project, env, env.packages)
@@ -524,13 +470,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             project.tasks.create(name: 'build_envs') {
                 dependsOn python_task,
-                        conda_envs_task,
                         python_from_zip_task,
                         virtualenvs_task,
+                        conda_task,
+                        conda_envs_task,
                         create_files_task,
                         create_links_task
             }
-
         }
     }
 
@@ -552,15 +498,16 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void condaInstall(Project project, File condaExecutable, File envDir, List<String> packages) {
+    private void condaInstall(Project project, Conda conda, List<String> packages) {
         if (packages == null) {
             return
         } else {
             project.logger.quiet("Installing packages via conda: $packages")
         }
+        File condaExecutable = getExecutable("conda", conda)
         packages.each { pckg ->
             project.exec {
-                commandLine condaExecutable, "install", "-y", "-p", envDir, pckg
+                commandLine condaExecutable, "install", "-y", "-p", conda.envDir, pckg
             }
         }
     }
