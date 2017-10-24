@@ -58,14 +58,13 @@ envs {
   //conda "envName", "version", "architecture", [<packages>]
   conda "Anaconda3", "Anaconda3-4.4.0", "64", ["django==1.8"]
   
-  //condaenv "envName", "sourceEnvName", "version", [<packages>]
-  condaenv "django19", "Miniconda3", "2.7", ["django==1.9"]
   //condaenv "envName", "version", [<packages>]
   //Here will be created additional "Miniconda2-latest" (or another one specified in condaDefaultVersion value) 
   //conda interpreter to be bootstraped
   condaenv "pyqt_env", "2.7", [condaPackage("pyqt")]
-  //condaenv "envName", "sourceEnvName", "version", "architecture", [<packages>]
-  condaenv "conda34", "Miniconda3", "3.4", "32", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
+  //condaenv "envName", "version", "sourceEnvName", [<packages>]
+  condaenv "django19", "2.7", "Miniconda3", ["django==1.9"]
+  condaenv "conda34", "3.4", "Miniconda3", ["ipython==2.1", "django==1.6", "behave", "jinja2", "tox==2.0"]
 
   if (Os.isFamily(Os.FAMILY_WINDOWS)) {
     // This links are used for envs like tox; *nix envs have such links already
