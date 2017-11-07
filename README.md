@@ -20,7 +20,7 @@ but in addition to creating Conda envs it provides:
 8. Creating IronPython environments (only Windows is supported, by default [2.7.7 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.7) is used)
 9. Virtualenv creation from any python environment created
 10. Python from zip creation: downloading archive from specified url, unpacking and preparing to work with
-11. Package installation for any environment or virtualenv 
+11. Package installation for any environment or virtualenv with specified install options
 
 
 Usage
@@ -43,6 +43,10 @@ envs {
   // by default if architecture isn't specified - 64 bit one is used
   // _64Bits = true
   
+  // by default pipInstallOptions equals to "--trusted-host pypi.python.org" 
+  // to fix CERTIFICATE_VERIFY_FAILED ssl error
+  // pipInstallOptions = "--trusted-host pypi.python.org"
+  
   //python "envName", "version", [<packages>]
   python "python35_64", "3.5.3", ["django==1.9"]
   //python "envName", "version", "architecture", [<packages>]
@@ -59,8 +63,9 @@ envs {
   conda "Anaconda3", "Anaconda3-4.4.0", "64", ["django==1.8"]
   
   //condaenv "envName", "version", [<packages>]
-  //Here will be created additional "Miniconda2-latest" (or another one specified in condaDefaultVersion value) 
-  //conda interpreter to be bootstraped
+  // Here will be created additional "Miniconda2-latest" 
+  // (or another one specified in condaDefaultVersion value) 
+  // conda interpreter to be bootstraped
   condaenv "pyqt_env", "2.7", [condaPackage("pyqt")]
   //condaenv "envName", "version", "sourceEnvName", [<packages>]
   condaenv "django19", "2.7", "Miniconda3", ["django==1.9"]
