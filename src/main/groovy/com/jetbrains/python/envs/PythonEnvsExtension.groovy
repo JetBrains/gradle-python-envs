@@ -1,7 +1,5 @@
 package com.jetbrains.python.envs
 
-import java.nio.file.Path
-import java.nio.file.Paths
 
 /**
  * Project extension to configure Python build environment.
@@ -24,8 +22,6 @@ class PythonEnvsExtension {
     List<CondaEnv> condaEnvs = []
     List<VirtualEnv> virtualEnvs = []
     List<Python> pythonsFromZip = []
-    List<CreateFile> files = []
-    List<CreateLink> links = []
 
     String CONDA_PREFIX = "CONDA_"
 
@@ -184,16 +180,6 @@ class PythonEnvsExtension {
         ironpython(envName, null, packages, urlToArchive)
     }
 
-    void textfile(final String path, final String content) {
-        files << new CreateFile(new File(path), content)
-    }
-
-    void link(final String linkString, final String sourceString, final File baseDir = null) {
-        Path linkPath = Paths.get(baseDir ? baseDir.toString() : '', linkString)
-        Path sourcePath = Paths.get(baseDir ? baseDir.toString() : '', sourceString)
-        links << new CreateLink(linkPath, sourcePath)
-    }
-
     String condaPackage(final String packageName) {
         return CONDA_PREFIX + packageName
     }
@@ -290,24 +276,3 @@ class CondaEnv extends Conda {
     }
 }
 
-
-class CreateFile {
-    final File file
-    final String content
-
-    CreateFile(File file, String content) {
-        this.file = file
-        this.content = content
-    }
-}
-
-
-class CreateLink {
-    final Path link
-    final Path source
-
-    CreateLink(Path link, Path source) {
-        this.link = link
-        this.source = source
-    }
-}
