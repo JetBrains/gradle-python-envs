@@ -481,43 +481,44 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private void pipInstall(Project project, Python env, List<String> packages) {
-        if (packages == null || env.type == null) {
+        if (packages == null || packages.empty || env.type == null) {
             return
-        } else {
-            project.logger.quiet("Installing packages via pip: $packages")
         }
+        project.logger.quiet("Installing packages via pip: $packages")
+
         if (env.type == EnvType.IRONPYTHON) {
             ironpythonInstall(project, env, packages)
             return
         }
-        File pipExecutable = getExecutable("pip", env)
-        packages.each { pckg ->
-            project.exec {
-                commandLine pipExecutable, "install", pckg
-            }
+
+        project.exec {
+            executable getExecutable("pip", env)
+            args "install"
+            args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
+            args packages
         }
     }
 
     private void condaInstall(Project project, Conda conda, List<String> packages) {
-        if (packages == null) {
+        if (packages == null || packages.empty) {
             return
-        } else {
-            project.logger.quiet("Installing packages via conda: $packages")
         }
-        File condaExecutable = getExecutable("conda", conda)
-        packages.each { pckg ->
-            project.exec {
-                commandLine condaExecutable, "install", "-y", "-p", conda.envDir, pckg
-            }
+        project.logger.quiet("Installing packages via conda: $packages")
+
+        project.exec {
+            executable getExecutable("conda", conda)
+            args "install", "-y"
+            args "-p", conda.envDir
+            args packages
         }
     }
 
     private void ironpythonInstall(Project project, Python env, List<String> packages) {
-        File ipyExecutable = getExecutable("ipy", env)
-        packages.each { pckg ->
-            project.exec {
-                commandLine ipyExecutable, "-X:Frames", "-m", "pip", "install", pckg
-            }
+        project.exec {
+            executable getExecutable("ipy", env)
+            args "-X:Frames", "-m", "pip", "install"
+            args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
+            args packages
         }
     }
 }

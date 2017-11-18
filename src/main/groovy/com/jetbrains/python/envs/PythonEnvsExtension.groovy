@@ -10,11 +10,14 @@ import java.nio.file.Paths
 class PythonEnvsExtension {
     File bootstrapDirectory
     File envsDirectory
+
     URL zipRepository
     Boolean shouldUseZipsFromRepository = false
 
+    Boolean _64Bits = true  // By default 64 bit envs should be installed
     String condaDefaultVersion = "Miniconda2-latest"
     String pypyDefaultVersion = "pypy2.7-5.8.0"
+    String pipInstallOptions = "--trusted-host pypi.python.org"
 
     List<Python> pythons = []
     List<Conda> condas = []
@@ -24,7 +27,6 @@ class PythonEnvsExtension {
     List<CreateFile> files = []
     List<CreateLink> links = []
 
-    Boolean _64Bits = true  // By default 64 bit envs should be installed
     String CONDA_PREFIX = "CONDA_"
 
     /**
