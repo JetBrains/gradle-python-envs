@@ -451,11 +451,20 @@ class PythonEnvsPlugin implements Plugin<Project> {
             return
         }
 
-        project.exec {
+        if (project.exec {
             executable getExecutable("pip", env)
             args "install"
             args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
             args packages
+        }.exitValue != 0) {
+            [
+                    getExecutable("pip", env),
+                    "install",
+                    *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
+                    *packages
+            ].join(" ").with { command ->
+                throw new GradleException("pip install failed, command was '$command'")
+            }
         }
     }
 
@@ -465,20 +474,38 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
         project.logger.quiet("Installing packages via conda: $packages")
 
-        project.exec {
+        if (project.exec {
             executable getExecutable("conda", conda)
             args "install", "-y"
             args "-p", conda.envDir
             args packages
+        }.exitValue != 0) {
+            [
+                    getExecutable("conda", conda),
+                    "install", "-y",
+                    "-p", conda.envDir,
+                    *packages
+            ].join(" ").with { command ->
+                throw new GradleException("conda install failed, command was '$command'")
+            }
         }
     }
 
     private void ironpythonInstall(Project project, Python env, List<String> packages) {
-        project.exec {
+        if (project.exec {
             executable getExecutable("ipy", env)
             args "-X:Frames", "-m", "pip", "install"
             args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
             args packages
+        }.exitValue != 0) {
+            [
+                    getExecutable("ipy", env),
+                    "-X:Frames", "-m", "pip", "install",
+                    *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
+                    *packages
+            ].join(" ").with { command ->
+                throw new GradleException("pip install failed, command was '$command'")
+            }
         }
     }
 }
