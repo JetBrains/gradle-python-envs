@@ -1,13 +1,11 @@
 package com.jetbrains.python.envs
 
 import org.apache.tools.ant.taskdefs.condition.Os
+import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
-import org.gradle.api.tasks.StopExecutionException
 import org.gradle.util.VersionNumber
-
-import java.nio.file.Files
 
 class PythonEnvsPlugin implements Plugin<Project> {
     private static String osName = System.getProperty('os.name').replaceAll(' ', '').with {
@@ -17,58 +15,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
     private static Boolean isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
     private static Boolean isUnix = Os.isFamily(Os.FAMILY_UNIX)
 
-    private void resolveJython(Project project) {
-        project.dependencies {
-            jython group: 'org.python', name: 'jython-installer', version: '2.7.1'
-        }
-    }
-
     private static URL getUrlToDownloadConda(Conda conda) {
         final String repository = (conda.version.toLowerCase().contains("miniconda")) ? "miniconda" : "archive"
         final String arch = "$osName-x86${conda.is64 ? '_64' : ''}"
         final String ext = isWindows ? "exe" : "sh"
 
         return new URL("https://repo.continuum.io/$repository/${conda.version}-$arch.$ext")
-    }
-
-    private void createInstallPythonBuildTask(Project project, File installDir) {
-        project.tasks.create(name: 'install_python_build') {
-            onlyIf {
-                !installDir.exists() && isUnix
-            }
-
-            doLast {
-                new File(project.buildDir, "pyenv.zip").with { pyenvZip ->
-                    project.logger.quiet("Downloading latest pyenv from github")
-                    project.ant.get(dest: pyenvZip) {
-                        url(url: "https://github.com/pyenv/pyenv/archive/master.zip")
-                    }
-
-                    File unzipFolder = new File(project.buildDir, "python-build-tmp")
-                    String pathToPythonBuildInPyenv = "pyenv-master/plugins/python-build"
-
-                    project.logger.quiet("Unzipping python-build to $unzipFolder")
-                    project.copy {
-                        from project.zipTree(pyenvZip)
-                        into unzipFolder
-                        include "$pathToPythonBuildInPyenv/**"
-                        eachFile { file ->
-                            file.path = file.path.replaceFirst(pathToPythonBuildInPyenv, '')
-                        }
-                    }
-
-                    project.logger.quiet("Installing python-build via bash to $installDir")
-                    project.exec {
-                        commandLine "bash", new File(unzipFolder, "install.sh")
-                        environment PREFIX: installDir
-                    }
-
-                    project.logger.quiet("Removing garbage")
-                    unzipFolder.deleteDir()
-                    pyenvZip.delete()
-                }
-            }
-        }
     }
 
     private static File getExecutable(String executable, Python env = null, File dir = null, EnvType type = null) {
@@ -115,7 +67,47 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createPythonUnix(Project project, Python env) {
+    private static Task createInstallPythonBuildTask(Project project, File installDir) {
+        return project.tasks.create(name: 'install_python_build') {
+            onlyIf {
+                !installDir.exists() && isUnix
+            }
+
+            doLast {
+                new File(project.buildDir, "pyenv.zip").with { pyenvZip ->
+                    project.logger.quiet("Downloading latest pyenv from github")
+                    project.ant.get(dest: pyenvZip) {
+                        url(url: "https://github.com/pyenv/pyenv/archive/master.zip")
+                    }
+
+                    File unzipFolder = new File(project.buildDir, "python-build-tmp")
+                    String pathToPythonBuildInPyenv = "pyenv-master/plugins/python-build"
+
+                    project.logger.quiet("Unzipping python-build to $unzipFolder")
+                    project.copy {
+                        from project.zipTree(pyenvZip)
+                        into unzipFolder
+                        include "$pathToPythonBuildInPyenv/**"
+                        eachFile { file ->
+                            file.path = file.path.replaceFirst(pathToPythonBuildInPyenv, '')
+                        }
+                    }
+
+                    project.logger.quiet("Installing python-build via bash to $installDir")
+                    project.exec {
+                        commandLine "bash", new File(unzipFolder, "install.sh")
+                        environment PREFIX: installDir
+                    }
+
+                    project.logger.quiet("Removing garbage")
+                    unzipFolder.deleteDir()
+                    pyenvZip.delete()
+                }
+            }
+        }
+    }
+
+    private Task createPythonUnixTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists() && isUnix
@@ -135,7 +127,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
                 catch (Exception e) {
                     project.logger.error(e.message)
-                    throw new StopExecutionException()
+                    throw new GradleException(e.message)
                 }
 
                 pipInstall(project, env, env.packages)
@@ -143,7 +135,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createPythonWindows(Project project, Python env) {
+    private Task createPythonWindowsTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists() && isWindows
@@ -188,7 +180,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
                 catch (Exception e) {
                     project.logger.error(e.message)
-                    throw new StopExecutionException()
+                    throw new GradleException(e.message)
                 }
 
                 pipInstall(project, env, env.packages)
@@ -196,7 +188,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private Task createJython(Project project, Python env) {
+    private Task createJythonTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
             onlyIf {
                 !env.envDir.exists()
@@ -230,7 +222,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
         project.afterEvaluate {
             project.configurations.jython.incoming.beforeResolve {
-                resolveJython(project)
+                project.dependencies {
+                    jython group: 'org.python', name: 'jython-installer', version: '2.7.1'
+                }
             }
 
             createInstallPythonBuildTask(project, new File(project.buildDir, "python-build"))
@@ -242,19 +236,19 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     switch (env.type) {
                         case EnvType.PYTHON:
                             if (isUnix) {
-                                dependsOn createPythonUnix(project, env)
+                                dependsOn createPythonUnixTask(project, env)
                             } else if (isWindows) {
-                                dependsOn createPythonWindows(project, env)
+                                dependsOn createPythonWindowsTask(project, env)
                             } else {
                                 project.logger.error("Something is wrong with os: $osName")
                             }
                             break
                         case EnvType.JYTHON:
-                            dependsOn createJython(project, env)
+                            dependsOn createJythonTask(project, env)
                             break
                         case EnvType.PYPY:
                             if (isUnix) {
-                                dependsOn createPythonUnix(project, env)
+                                dependsOn createPythonUnixTask(project, env)
                             } else {
                                 project.logger.warn("PyPy installation isn't supported for $osName, please use envFromZip instead")
                             }
@@ -332,7 +326,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             }
                             catch (Exception e) {
                                 project.logger.error(e.message)
-                                throw new StopExecutionException()
+                                throw new GradleException(e.message)
                             }
 
                             pipInstall(project, env, env.packages)
@@ -436,46 +430,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
             }
 
-            Task create_files_task = project.tasks.create(name: 'create_files') {
-                onlyIf { !envs.files.empty }
-
-                doLast {
-                    envs.files.each { e ->
-                        if (e.file.exists()) {
-                            project.logger.warn("File $e.file already exists")
-                        } else {
-                            project.logger.quiet("Creating file $e.file with the following content:\n$e.content")
-                            e.file.write(e.content)
-                        }
-                    }
-                }
-            }
-
-            Task create_links_task = project.tasks.create(name: 'create_links') {
-                onlyIf { !envs.links.empty }
-
-                doLast {
-                    envs.links.each { e ->
-                        if (e.link.toFile().exists()) {
-                            project.logger.warn("Link $e.link already exists")
-                        } else if (!e.source.toFile().exists()) {
-                            project.logger.warn("Source file $e.source doesn't exist")
-                        } else {
-                            project.logger.quiet("Creating link $e.link pointing to $e.source")
-                            Files.createLink(e.link, e.source)
-                        }
-                    }
-                }
-            }
-
             project.tasks.create(name: 'build_envs') {
                 dependsOn python_task,
                         python_from_zip_task,
                         virtualenvs_task,
                         conda_task,
-                        conda_envs_task,
-                        create_files_task,
-                        create_links_task
+                        conda_envs_task
             }
         }
     }
@@ -491,12 +451,18 @@ class PythonEnvsPlugin implements Plugin<Project> {
             return
         }
 
-        project.exec {
-            executable getExecutable("pip", env)
-            args "install"
-            args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
-            args packages
-        }
+        List<String> command = [
+                getExecutable("pip", env),
+                "install",
+                *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
+                *packages
+        ]
+        project.logger.quiet("Executing '${command.join(" ")}'")
+
+        if (project.exec {
+            commandLine command
+        }.exitValue != 0) throw new GradleException("pip install failed")
+
     }
 
     private void condaInstall(Project project, Conda conda, List<String> packages) {
@@ -505,20 +471,31 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
         project.logger.quiet("Installing packages via conda: $packages")
 
-        project.exec {
-            executable getExecutable("conda", conda)
-            args "install", "-y"
-            args "-p", conda.envDir
-            args packages
-        }
+        List<String> command = [
+                getExecutable("conda", conda),
+                "install", "-y",
+                "-p", conda.envDir,
+                *packages
+        ]
+        project.logger.quiet("Executing '${command.join(" ")}'")
+
+        if (project.exec {
+            commandLine command
+        }.exitValue != 0) throw new GradleException("conda install failed")
     }
 
+
     private void ironpythonInstall(Project project, Python env, List<String> packages) {
-        project.exec {
-            executable getExecutable("ipy", env)
-            args "-X:Frames", "-m", "pip", "install"
-            args project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" ")
-            args packages
-        }
+        List<String> command = [
+                getExecutable("ipy", env),
+                "-X:Frames", "-m", "pip", "install",
+                *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
+                *packages
+        ]
+        project.logger.quiet("Executing '${command.join(" ")}'")
+
+        if (project.exec {
+            commandLine command
+        }.exitValue != 0) throw new GradleException("pip install failed")
     }
 }
