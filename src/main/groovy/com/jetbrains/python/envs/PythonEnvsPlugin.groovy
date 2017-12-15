@@ -108,7 +108,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private Task createPythonUnixTask(Project project, Python env) {
-        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+        return project.tasks.create(name: "Bootstrap_${env.type}_'$env.name'") {
             onlyIf {
                 !env.envDir.exists() && isUnix
             }
@@ -136,7 +136,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private Task createPythonWindowsTask(Project project, Python env) {
-        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+        return project.tasks.create(name: "Bootstrap_${env.type}_'$env.name'") {
             onlyIf {
                 !env.envDir.exists() && isWindows
             }
@@ -189,7 +189,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
     }
 
     private Task createJythonTask(Project project, Python env) {
-        return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+        return project.tasks.create(name: "Bootstrap_${env.type}_'$env.name'") {
             onlyIf {
                 !env.envDir.exists()
             }
@@ -263,7 +263,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 onlyIf { !envs.pythonsFromZip.empty }
 
                 envs.pythonsFromZip.each { env ->
-                    dependsOn project.tasks.create(name: "Bootstrap ${env.type ?: ''} '$env.name' from archive") {
+                    dependsOn project.tasks.create(name: "Bootstrap_${env.type ? env.type + '_': '_'} '$env.name'_from_archive") {
                         onlyIf {
                             !env.envDir.exists()
                         }
@@ -346,7 +346,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         return
                     }
 
-                    dependsOn project.tasks.create("Create virtualenv '$env.name'") {
+                    dependsOn project.tasks.create("Create_virtualenv_'$env.name'") {
                         onlyIf {
                             !env.envDir.exists() && env.sourceEnv.type != null
                         }
@@ -373,7 +373,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 onlyIf { !envs.condas.empty }
 
                 envs.condas.each { Conda env ->
-                    dependsOn project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+                    dependsOn project.tasks.create(name: "Bootstrap_${env.type}_'$env.name'") {
                         onlyIf {
                             !env.envDir.exists()
                         }
@@ -411,7 +411,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 onlyIf { !envs.condaEnvs.empty }
 
                 envs.condaEnvs.each { env ->
-                    dependsOn project.tasks.create("Create conda env '$env.name'") {
+                    dependsOn project.tasks.create("Create_conda_env_'$env.name'") {
                         onlyIf {
                             !env.envDir.exists()
                         }
