@@ -31,12 +31,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 if (executable in ["pip", "virtualenv", "conda"]) {
                     pathString = isWindows ? "Scripts/${executable}.exe" : "bin/${executable}"
                 } else if (executable.startsWith("python")) {
-                    pathString = "${executable}${isWindows ? '.exe' : ''}"
+                    pathString = isWindows ? "${executable}.exe" : "bin/${executable}"
                 } else {
                     throw new RuntimeException("$executable is not supported for $env.type yet")
                 }
                 break
             case [EnvType.JYTHON, EnvType.PYPY]:
+                if (env.type == EnvType.JYTHON && executable== "python") executable = "jython"
                 pathString = "bin/${executable}${isWindows ? '.exe' : ''}"
                 break
             case EnvType.IRONPYTHON:
@@ -69,8 +70,9 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private static Task createInstallPythonBuildTask(Project project, File installDir) {
         return project.tasks.create(name: 'install_python_build') {
+
             onlyIf {
-                !installDir.exists() && isUnix
+                isUnix && !installDir.exists()
             }
 
             doLast {
@@ -109,11 +111,16 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private Task createPythonUnixTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
-            onlyIf {
-                !env.envDir.exists() && isUnix
-            }
 
             dependsOn "install_python_build"
+
+            onlyIf {
+                isUnix && (!env.envDir.exists() || isPythonInvalid(project, env))
+            }
+
+            doFirst {
+                env.envDir.deleteDir()
+            }
 
             doLast {
                 project.logger.quiet("Creating $env.type '$env.name' at $env.envDir directory")
@@ -137,8 +144,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private Task createPythonWindowsTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+
             onlyIf {
-                !env.envDir.exists() && isWindows
+                isWindows && (!env.envDir.exists() || isPythonInvalid(project, env))
+            }
+
+            doFirst {
+                env.envDir.deleteDir()
             }
 
             doLast {
@@ -190,8 +202,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private Task createJythonTask(Project project, Python env) {
         return project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+
             onlyIf {
-                !env.envDir.exists()
+                !env.envDir.exists() || isPythonInvalid(project, env)
+            }
+
+            doFirst {
+                env.envDir.deleteDir()
             }
 
             doLast {
@@ -230,6 +247,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             createInstallPythonBuildTask(project, new File(project.buildDir, "python-build"))
 
             Task python_task = project.tasks.create(name: 'build_pythons') {
+
                 onlyIf { !envs.pythons.empty }
 
                 envs.pythons.each { env ->
@@ -260,12 +278,18 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             Task python_from_zip_task = project.tasks.create(name: 'build_pythons_from_zip') {
+
                 onlyIf { !envs.pythonsFromZip.empty }
 
                 envs.pythonsFromZip.each { env ->
                     dependsOn project.tasks.create(name: "Bootstrap ${env.type ?: ''} '$env.name' from archive") {
+
                         onlyIf {
-                            !env.envDir.exists()
+                            !env.envDir.exists() || isPythonInvalid(project, env)
+                        }
+
+                        doFirst {
+                            env.envDir.deleteDir()
                         }
 
                         doLast {
@@ -347,8 +371,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     }
 
                     dependsOn project.tasks.create("Create virtualenv '$env.name'") {
+
                         onlyIf {
-                            !env.envDir.exists() && env.sourceEnv.type != null
+                            (!env.envDir.exists() || isPythonInvalid(project, env)) && env.sourceEnv.type != null
+                        }
+
+                        doFirst {
+                            env.envDir.deleteDir()
                         }
 
                         doLast {
@@ -370,12 +399,18 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             Task conda_task = project.tasks.create(name: "build_condas") {
+
                 onlyIf { !envs.condas.empty }
 
                 envs.condas.each { Conda env ->
                     dependsOn project.tasks.create(name: "Bootstrap $env.type '$env.name'") {
+
                         onlyIf {
-                            !env.envDir.exists()
+                            !env.envDir.exists() || isPythonInvalid(project, env)
+                        }
+
+                        doFirst {
+                            env.envDir.deleteDir()
                         }
 
                         doLast {
@@ -412,8 +447,13 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
                 envs.condaEnvs.each { env ->
                     dependsOn project.tasks.create("Create conda env '$env.name'") {
+
                         onlyIf {
-                            !env.envDir.exists()
+                            !env.envDir.exists() || isPythonInvalid(project, env)
+                        }
+
+                        doFirst {
+                            env.envDir.deleteDir()
                         }
 
                         doLast {
@@ -497,5 +537,16 @@ class PythonEnvsPlugin implements Plugin<Project> {
         if (project.exec {
             commandLine command
         }.exitValue != 0) throw new GradleException("pip install failed")
+    }
+
+    private boolean isPythonValid(Project project, Python env) {
+        File exec = getExecutable("python", env)
+        if (!exec.exists()) return false
+
+        return project.exec { commandLine exec, "-V" }.exitValue == 0
+    }
+
+    private boolean isPythonInvalid(Project project, Python env) {
+        return !isPythonValid(project, env)
     }
 }
