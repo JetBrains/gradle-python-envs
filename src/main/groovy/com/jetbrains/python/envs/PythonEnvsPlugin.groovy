@@ -538,7 +538,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
         File exec = getExecutable("python", env)
         if (!exec.exists()) return false
 
-        return project.exec { commandLine exec, "-V" }.exitValue == 0
+        int exitValue
+        try {
+            exitValue = project.exec { commandLine exec, "-c", "'print(1)'" }.exitValue
+        } catch (ignored) {
+            return false
+        }
+
+        return exitValue == 0
     }
 
     private boolean isPythonInvalid(Project project, Python env) {
