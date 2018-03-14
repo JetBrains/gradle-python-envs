@@ -455,7 +455,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                             project.logger.quiet("Creating condaenv '$env.name' at $env.envDir directory")
                             project.exec {
                                 executable getExecutable("conda", env.sourceEnv)
-                                args "create", "-p", env.envDir, "-y", "python=$env.version"
+                                args "create", "-n", env.name, "-p", env.envDir, "-y", "python=$env.version"
                                 args env.condaPackages
                             }
 
