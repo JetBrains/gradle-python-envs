@@ -37,7 +37,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 }
                 break
             case [EnvType.JYTHON, EnvType.PYPY]:
-                if (env.type == EnvType.JYTHON && executable== "python") executable = "jython"
+                if (env.type == EnvType.JYTHON && executable == "python") executable = "jython"
                 pathString = "bin/${executable}${isWindows ? '.exe' : ''}"
                 break
             case EnvType.IRONPYTHON:
@@ -138,6 +138,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     throw new GradleException(e.message)
                 }
 
+                upgradePip(project, env)
                 pipInstall(project, env, env.packages)
             }
         }
@@ -225,7 +226,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     @Override
     void apply(Project project) {
-        project.mkdir("build")
+        project.mkdir(project.buildDir)
         PythonEnvsExtension envs = project.extensions.create("envs", PythonEnvsExtension.class)
 
         project.repositories {
@@ -334,13 +335,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                                 args getPipFile(project)
                                             }
                                         }
-                                    } else {
-                                        project.logger.quiet("Force upgrade pip and setuptools")
-                                        project.exec {
-                                            executable getExecutable("python", env)
-                                            args "-m", "pip", "install", "--upgrade", "--force", "setuptools", "pip"
-                                        }
                                     }
+                                    upgradePip(project, env)
                                 }
 
                                 project.logger.quiet("Deleting $archiveName archive")
@@ -475,6 +471,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
+    private void upgradePip(Project project, Python env) {
+        project.logger.quiet("Force upgrade pip and setuptools")
+        project.exec {
+            executable getExecutable("python", env)
+            args "-m", "pip", "install", "--upgrade", "--force", "setuptools", "pip"
+        }
+    }
+
     private void pipInstall(Project project, Python env, List<String> packages) {
         if (packages == null || packages.empty || env.type == null) {
             return
@@ -518,7 +522,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
             commandLine command
         }.exitValue != 0) throw new GradleException("conda install failed")
     }
-
 
     private void ironpythonInstall(Project project, Python env, List<String> packages) {
         List<String> command = [
