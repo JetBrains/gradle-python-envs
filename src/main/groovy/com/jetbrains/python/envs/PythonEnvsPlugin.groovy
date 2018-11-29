@@ -134,8 +134,12 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     project.logger.quiet("Successfully")
                 }
                 catch (Exception e) {
-                    project.logger.error(e.message)
-                    throw new GradleException(e.message)
+                    if (isPythonInvalid(project, env)) {
+                        project.logger.error(e.message)
+                        throw new GradleException(e.message)
+                    } else {
+                        project.logger.warn(e.message)
+                    }
                 }
 
                 upgradePip(project, env)
