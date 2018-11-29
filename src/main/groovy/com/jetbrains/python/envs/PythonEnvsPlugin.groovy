@@ -75,6 +75,10 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 isUnix && !installDir.exists()
             }
 
+            doFirst {
+                project.buildDir.mkdirs()
+            }
+
             doLast {
                 new File(project.buildDir, "pyenv.zip").with { pyenvZip ->
                     project.logger.quiet("Downloading latest pyenv from github")
@@ -120,6 +124,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             doFirst {
+                env.envDir.mkdirs()
                 env.envDir.deleteDir()
             }
 
@@ -155,6 +160,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             doFirst {
+                env.envDir.mkdirs()
                 env.envDir.deleteDir()
             }
 
@@ -230,7 +236,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     @Override
     void apply(Project project) {
-        project.mkdir(project.buildDir)
         PythonEnvsExtension envs = project.extensions.create("envs", PythonEnvsExtension.class)
 
         project.repositories {
@@ -292,6 +297,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
 
@@ -374,6 +380,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
 
@@ -406,6 +413,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
 
@@ -448,6 +456,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
 
