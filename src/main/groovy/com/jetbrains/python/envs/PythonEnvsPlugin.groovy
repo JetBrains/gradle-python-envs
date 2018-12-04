@@ -160,6 +160,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
             }
 
             doFirst {
+                project.buildDir.mkdir()
                 env.envDir.mkdirs()
                 env.envDir.deleteDir()
             }
@@ -297,6 +298,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            project.buildDir.mkdir()
                             env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
@@ -413,6 +415,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         }
 
                         doFirst {
+                            project.buildDir.mkdir()
                             env.envDir.mkdirs()
                             env.envDir.deleteDir()
                         }
