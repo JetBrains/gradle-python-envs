@@ -239,10 +239,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
     void apply(Project project) {
         PythonEnvsExtension envs = project.extensions.create("envs", PythonEnvsExtension.class)
 
-        project.repositories {
-            mavenCentral()
-        }
-
         project.configurations {
             jython
         }
