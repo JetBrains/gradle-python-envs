@@ -15,7 +15,8 @@ class PythonEnvsExtension {
     Boolean _64Bits = true  // By default 64 bit envs should be installed
     String condaDefaultVersion = "Miniconda2-latest"
     String pypyDefaultVersion = "pypy2.7-5.8.0"
-    String pipInstallOptions = "--trusted-host pypi.python.org"
+    @SuppressWarnings("unused")
+    String pipInstallOptions = "--trusted-host pypi.python.org --trusted-host pypi.org --trusted-host files.pythonhosted.org"
 
     List<Python> pythons = []
     List<Conda> condas = []

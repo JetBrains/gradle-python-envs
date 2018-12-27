@@ -1,0 +1,9 @@
+language: groovy
+
+os:
+- linux
+
+jdk:
+- openjdk8
+
+dist: xenial

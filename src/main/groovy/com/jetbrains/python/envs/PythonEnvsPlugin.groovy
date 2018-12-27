@@ -147,7 +147,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                     }
                 }
 
-                upgradePip(project, env)
+                upgradePipAndSetuptools(project, env)
                 pipInstall(project, env, env.packages)
             }
         }
@@ -348,7 +348,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                             }
                                         }
                                     }
-                                    upgradePip(project, env)
+                                    upgradePipAndSetuptools(project, env)
                                 }
 
                                 project.logger.quiet("Deleting $archiveName archive")
@@ -487,12 +487,18 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
     }
 
-    private void upgradePip(Project project, Python env) {
+    private void upgradePipAndSetuptools(Project project, Python env) {
         project.logger.quiet("Force upgrade pip and setuptools")
-        project.exec {
-            executable getExecutable("python", env)
-            args "-m", "pip", "install", "--upgrade", "--force", "setuptools", "pip"
-        }
+        List<String> command = [
+                getExecutable("python", env), "-m", "pip", "install",
+                *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
+                "--upgrade", "--force", "pip", "setuptools"
+        ]
+
+        project.logger.quiet("Executing '${command.join(" ")}'")
+        if (project.exec {
+            commandLine command
+        }.exitValue != 0) throw new GradleException("pip & setuptools upgrade failed")
     }
 
     private void pipInstall(Project project, Python env, List<String> packages) {
@@ -517,7 +523,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
         if (project.exec {
             commandLine command
         }.exitValue != 0) throw new GradleException("pip install failed")
-
     }
 
     private void condaInstall(Project project, Conda conda, List<String> packages) {

@@ -4,6 +4,7 @@ plugins {
     id 'com.gradle.plugin-publish' version '0.9.7'
     id 'com.palantir.git-version' version '0.8.0'
     id 'maven'
+    id 'java-gradle-plugin'
 }
 
 project.version = gitVersion()
@@ -26,6 +27,13 @@ uploadArchives {
 
 dependencies {
     compile gradleApi()
+    testImplementation(
+            gradleTestKit(),
+            'junit:junit:4.12'
+    )
+    testImplementation('org.spockframework:spock-core:1.1-groovy-2.4') {
+        exclude module: 'groovy-all'
+    }
 }
 
 pluginBundle {
@@ -38,5 +46,16 @@ pluginBundle {
             id = 'com.jetbrains.python.envs'
             displayName = 'Gradle Python Envs plugin'
         }
+    }
+}
+
+test {
+    testLogging {
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
+        showStandardStreams = true
+
+        events "started", "passed", "skipped", "failed", "standard_out", "standard_error"
     }
 }
