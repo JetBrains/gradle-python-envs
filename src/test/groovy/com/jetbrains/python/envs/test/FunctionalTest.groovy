@@ -329,6 +329,7 @@ class FunctionalTest extends Specification {
         result.task(":build_envs").outcome == SUCCESS
     }
 
+    @Requires({ os.isLinux() || os.isMacOs() })
     def "install pypy2 and virtualenv with package"() {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
@@ -364,6 +365,7 @@ class FunctionalTest extends Specification {
         result.task(":build_envs").outcome in [SUCCESS, UP_TO_DATE]
     }
 
+    @Requires({ os.isLinux() || os.isMacOs() })
     def "install pypy3 and virtualenv with package"() {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
@@ -399,7 +401,7 @@ class FunctionalTest extends Specification {
         result.task(":build_envs").outcome in [SUCCESS, UP_TO_DATE]
     }
 
-    @Requires({ os.windows })
+    @Requires({ os.isWindows() })
     def "install ironpython"() {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
