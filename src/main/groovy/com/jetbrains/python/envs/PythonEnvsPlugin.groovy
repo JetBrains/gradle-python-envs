@@ -341,14 +341,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                         project.exec {
                                             if (env.type == EnvType.IRONPYTHON) {
                                                 executable getExecutable("ipy", env)
-                                                args "-X:Frames", "-m", "ensurepip"
+                                                args "-X:Frames", "-X:Debug", "-m", "ensurepip"
                                             } else {
                                                 executable getExecutable("python", env)
                                                 args getPipFile(project)
                                             }
                                         }
                                     }
-                                    upgradePipAndSetuptools(project, env)
+                                    if (env.type != EnvType.IRONPYTHON) upgradePipAndSetuptools(project, env)
                                 }
 
                                 project.logger.quiet("Deleting $archiveName archive")

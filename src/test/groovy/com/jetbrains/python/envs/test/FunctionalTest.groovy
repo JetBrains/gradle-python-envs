@@ -2,11 +2,13 @@ package com.jetbrains.python.envs.test
 
 import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.GradleRunner
-import static org.gradle.testkit.runner.TaskOutcome.*
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
+import spock.lang.Requires
 import spock.lang.Specification
 
+import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
+import static org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 
 class FunctionalTest extends Specification {
     @Rule
@@ -395,5 +397,39 @@ class FunctionalTest extends Specification {
         println(result.output)
         result.output.contains('BUILD SUCCESSFUL')
         result.task(":build_envs").outcome in [SUCCESS, UP_TO_DATE]
+    }
+
+    @Requires({ os.windows })
+    def "install ironpython"() {
+        given:
+        settingsFile << "rootProject.name = 'gradle-python-envs'"
+        buildFile << """
+        import org.apache.tools.ant.taskdefs.condition.Os
+
+        plugins {
+            id "com.jetbrains.python.envs"
+        }
+        
+        envs {
+            bootstrapDirectory = new File(buildDir, 'bootstrap')
+            envsDirectory = file(buildDir)
+            
+            ironpython "ironpython64"
+        }
+        
+        """
+
+        when:
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(testProjectDir.root)
+                .withArguments('build_envs')
+                .withPluginClasspath()
+                .build()
+
+        then:
+        println(result.output)
+        result.output.contains('Downloading IronPython-2.7.7-win.zip archive')
+        result.output.contains('BUILD SUCCESSFUL')
+        result.task(":build_envs").outcome == SUCCESS
     }
 }
