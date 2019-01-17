@@ -334,8 +334,6 @@ class FunctionalTest extends Specification {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
         buildFile << """
-        import org.apache.tools.ant.taskdefs.condition.Os
-
         plugins {
             id "com.jetbrains.python.envs"
         }
@@ -344,10 +342,8 @@ class FunctionalTest extends Specification {
             bootstrapDirectory = new File(buildDir, 'bootstrap')
             envsDirectory = file(buildDir)
             
-            if (Os.isFamily(Os.FAMILY_UNIX)) {
-                pypy "pypy2", ["django"]
-                virtualenv "envPypy2", "pypy2", ["pytest"]
-            }
+            pypy "pypy2", ["django"]
+            virtualenv "envPypy2", "pypy2", ["pytest"]
         }
         
         """
@@ -370,8 +366,6 @@ class FunctionalTest extends Specification {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
         buildFile << """
-        import org.apache.tools.ant.taskdefs.condition.Os
-
         plugins {
             id "com.jetbrains.python.envs"
         }
@@ -380,10 +374,8 @@ class FunctionalTest extends Specification {
             bootstrapDirectory = new File(buildDir, 'bootstrap')
             envsDirectory = file(buildDir)
             
-            if (Os.isFamily(Os.FAMILY_UNIX)) {
-                pypy "pypy3", "pypy3.5-5.8.0", ["nose"]
-                virtualenv "envPypy3", "pypy3", ["django"]
-            }  
+             pypy "pypy3", "pypy3.5-5.8.0", ["nose"]
+             virtualenv "envPypy3", "pypy3", ["django"]
         }
         
         """
@@ -402,12 +394,10 @@ class FunctionalTest extends Specification {
     }
 
     @Requires({ os.isWindows() })
-    def "install ironpython"() {
+    def "install ironpython32"() {
         given:
         settingsFile << "rootProject.name = 'gradle-python-envs'"
         buildFile << """
-        import org.apache.tools.ant.taskdefs.condition.Os
-
         plugins {
             id "com.jetbrains.python.envs"
         }
@@ -416,7 +406,7 @@ class FunctionalTest extends Specification {
             bootstrapDirectory = new File(buildDir, 'bootstrap')
             envsDirectory = file(buildDir)
             
-            ironpython "ironpython64"
+            ironpython "ironpython", "32", ["requests"]
         }
         
         """
@@ -430,7 +420,39 @@ class FunctionalTest extends Specification {
 
         then:
         println(result.output)
-        result.output.contains('Downloading IronPython-2.7.7-win.zip archive')
+        result.output.contains('Downloading IronPython.2.7.9.zip archive')
+        result.output.contains('BUILD SUCCESSFUL')
+        result.task(":build_envs").outcome == SUCCESS
+    }
+
+    @Requires({ os.isWindows() })
+    def "install ironpython64"() {
+        given:
+        settingsFile << "rootProject.name = 'gradle-python-envs'"
+        buildFile << """
+        plugins {
+            id "com.jetbrains.python.envs"
+        }
+        
+        envs {
+            bootstrapDirectory = new File(buildDir, 'bootstrap')
+            envsDirectory = file(buildDir)
+            
+            ironpython "ironpython64", ["requests"]
+        }
+        
+        """
+
+        when:
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(testProjectDir.root)
+                .withArguments('build_envs')
+                .withPluginClasspath()
+                .build()
+
+        then:
+        println(result.output)
+        result.output.contains('Downloading IronPython.2.7.9.zip archive')
         result.output.contains('BUILD SUCCESSFUL')
         result.task(":build_envs").outcome == SUCCESS
     }

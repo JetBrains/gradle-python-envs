@@ -41,8 +41,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
                 pathString = "bin/${executable}${isWindows ? '.exe' : ''}"
                 break
             case EnvType.IRONPYTHON:
-                if (executable == "ipy") {
-                    pathString = env.is64 ? "ipy64.exe" : "ipy.exe"
+                if (executable in ["ipy", "python"] ) {
+                    pathString = "net45/${env.is64 ? "ipy.exe" : "ipy32.exe"}"
                 } else {
                     pathString = "Scripts/${executable}.exe"
                 }
@@ -341,14 +341,14 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                         project.exec {
                                             if (env.type == EnvType.IRONPYTHON) {
                                                 executable getExecutable("ipy", env)
-                                                args "-X:Frames", "-X:Debug", "-m", "ensurepip"
+                                                args "-m", "ensurepip"
                                             } else {
                                                 executable getExecutable("python", env)
                                                 args getPipFile(project)
                                             }
                                         }
                                     }
-                                    if (env.type != EnvType.IRONPYTHON) upgradePipAndSetuptools(project, env)
+                                    upgradePipAndSetuptools(project, env)
                                 }
 
                                 project.logger.quiet("Deleting $archiveName archive")
@@ -507,11 +507,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
         }
         project.logger.quiet("Installing packages via pip: $packages")
 
-        if (env.type == EnvType.IRONPYTHON) {
-            ironpythonInstall(project, env, packages)
-            return
-        }
-
         List<String> command = [
                 getExecutable("pip", env),
                 "install",
@@ -542,20 +537,6 @@ class PythonEnvsPlugin implements Plugin<Project> {
         if (project.exec {
             commandLine command
         }.exitValue != 0) throw new GradleException("conda install failed")
-    }
-
-    private void ironpythonInstall(Project project, Python env, List<String> packages) {
-        List<String> command = [
-                getExecutable("ipy", env),
-                "-X:Frames", "-m", "pip", "install",
-                *project.extensions.findByName("envs").getProperty("pipInstallOptions").split(" "),
-                *packages
-        ]
-        project.logger.quiet("Executing '${command.join(" ")}'")
-
-        if (project.exec {
-            commandLine command
-        }.exitValue != 0) throw new GradleException("pip install failed")
     }
 
     private boolean isPythonValid(Project project, Python env) {

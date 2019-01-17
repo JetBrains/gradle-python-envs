@@ -17,7 +17,7 @@ but in addition to creating Conda envs it provides:
 5. Creating Conda envrionments, conda package installation support
 6. Creating Jython environments
 7. Creating PyPy environments (only Unix is supported, by default pypy2.7-5.8.0 version is used)
-8. Creating IronPython environments (only Windows is supported, by default [2.7.7 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.7) is used)
+8. Creating IronPython environments (only Windows is supported, by default [2.7.9 version](https://github.com/IronLanguages/ironpython2/releases/tag/ipy-2.7.9) is used)
 9. Virtualenv creation from any python environment created
 10. Python from zip creation: downloading archive from specified url, unpacking and preparing to work with
 11. Package installation for any environment or virtualenv with specified install options

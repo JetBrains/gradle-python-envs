@@ -163,7 +163,7 @@ class PythonEnvsExtension {
                     final String architecture = null,
                     final List<String> packages = null,
                     final URL urlToArchive = null) {
-        URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/main/releases/download/ipy-2.7.7/IronPython-2.7.7-win.zip")
+        URL urlToIronPythonZip = new URL("https://github.com/IronLanguages/ironpython2/releases/download/ipy-2.7.9/IronPython.2.7.9.zip")
         pythonsFromZip << new Python(
                 envName,
                 bootstrapDirectory,
