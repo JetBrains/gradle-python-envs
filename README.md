@@ -36,7 +36,8 @@ envs {
   envsDirectory = new File(buildDir, 'envs')
   
   // Download python zips when Windows is used from http://repository.net/%archieveName%,
-  // where {archieveName} is python-{version}-{architecture}.zip
+  // where {archieveName} is python-{version}-{architecture}.zip.
+  // For example, for the 64 bit version of Python 3.7.2 the archive name will be python-3.7.2-64.zip
   zipRepository = new URL("http://repository.net/")
   shouldUseZipsFromRepository = Os.isFamily(Os.FAMILY_WINDOWS)
   
