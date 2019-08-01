@@ -1,4 +1,4 @@
-[![official JetBrains project](http://jb.gg/badges/official-plastic.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+[![official JetBrains project](https://jb.gg/badges/official-plastic.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
 Gradle Python Envs Plugin
 ========================
@@ -35,10 +35,10 @@ envs {
   bootstrapDirectory = new File(buildDir, 'bootstrap')
   envsDirectory = new File(buildDir, 'envs')
   
-  // Download python zips when Windows is used from http://repository.net/%archieveName%,
+  // Download python zips when Windows is used from https://repository.net/%archieveName%,
   // where {archieveName} is python-{version}-{architecture}.zip.
   // For example, for the 64 bit version of Python 3.7.2 the archive name will be python-3.7.2-64.zip
-  zipRepository = new URL("http://repository.net/")
+  zipRepository = new URL("https://repository.net/")
   shouldUseZipsFromRepository = Os.isFamily(Os.FAMILY_WINDOWS)
   
   // by default if architecture isn't specified - 64 bit one is used
