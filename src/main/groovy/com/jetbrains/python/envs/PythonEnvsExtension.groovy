@@ -1,6 +1,8 @@
 package com.jetbrains.python.envs
 
 
+import org.gradle.api.InvalidUserDataException
+
 /**
  * Project extension to configure Python build environment.
  *
@@ -30,15 +32,20 @@ class PythonEnvsExtension {
      * @param envName name of environment like "env_for_django"
      * @param version py version like "3.4"
      * @param packages collection of py packages to install
+     * @param patchFileUri URI of a patch to apply when building Python (see the `python-build`'s `-p` option). Absolute paths are also accepted.
      */
     void python(final String envName,
                 final String version,
                 final String architecture = null,
-                final List<String> packages = null) {
+                final List<String> packages = null,
+                final String patchFileUri = null) {
         if (zipRepository && shouldUseZipsFromRepository) {
+            if (patchFileUri) {
+                throw new InvalidUserDataException("A patch is defined for a pre-built Python")
+            }
             pythonFromZip envName, getUrlFromRepository("python", version, architecture), "python", packages
         } else {
-            pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages)
+            pythons << new Python(envName, bootstrapDirectory, EnvType.PYTHON, version, is64(architecture), packages, null, patchFileUri)
         }
     }
 
@@ -87,7 +94,7 @@ class PythonEnvsExtension {
                final List<String> packages = null) {
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
-                                             .collect { it.substring(CONDA_PREFIX.length()) }
+                .collect { it.substring(CONDA_PREFIX.length()) }
         condas << new Conda(envName, bootstrapDirectory, version, is64(architecture), pipPackages, condaPackages)
     }
 
@@ -112,7 +119,7 @@ class PythonEnvsExtension {
                   final List<String> packages = null) {
         List<String> pipPackages = packages.findAll { !it.startsWith(CONDA_PREFIX) }
         List<String> condaPackages = packages.findAll { it.startsWith(CONDA_PREFIX) }
-                                             .collect { it.substring(CONDA_PREFIX.length()) }
+                .collect { it.substring(CONDA_PREFIX.length()) }
         if (sourceEnvName == null) {
             conda condaDefaultVersion
         }
@@ -219,6 +226,7 @@ class Python {
     final Boolean is64
     final List<String> packages
     final URL url
+    final String patchFileUri
 
     Python(String name,
            File dir,
@@ -226,7 +234,8 @@ class Python {
            String version = null,
            Boolean is64 = true,
            List<String> packages = null,
-           URL url = null) {
+           URL url = null,
+           String patchFileUri = null) {
         this.name = name
         this.envDir = new File(dir, name)
         this.type = type
@@ -234,6 +243,7 @@ class Python {
         this.is64 = is64
         this.packages = packages
         this.url = url
+        this.patchFileUri = patchFileUri
     }
 }
 
