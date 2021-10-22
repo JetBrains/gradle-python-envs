@@ -53,7 +53,7 @@ envs {
   //python "envName", "version", "architecture", [<packages>]
   python "python36_32", "3.6.2", "32", ["django==1.10"]
   //python "envName", "version", "architecture", [<packages>], patchUri
-  python pythonName, version, "64", [], "file://path/to/a.patch"
+  python "python310_64", "3.10.0", "64", [], "file://path/to/a.patch"
   //virtualenv "virtualEnvName", "sourceEnvName", [<packages>]
   virtualenv "envPython35", "python35_64", ["pytest"]
   virtualenv "envPython36", "python36_32", ["behave", "requests"]
