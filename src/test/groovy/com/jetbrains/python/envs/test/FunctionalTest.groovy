@@ -456,4 +456,88 @@ class FunctionalTest extends Specification {
         result.output.contains('BUILD SUCCESSFUL')
         result.task(":build_envs").outcome == SUCCESS
     }
+
+    def "test can't patch pre-built python"() {
+        given:
+        settingsFile << "rootProject.name = 'gradle-python-envs-test'"
+        buildFile << """
+        plugins {
+            id "com.jetbrains.python.envs"
+        }
+        
+        apply plugin: 'com.jetbrains.python.envs'
+        
+        envs {
+            bootstrapDirectory = new File(buildDir, 'bootstrap')
+            envsDirectory = file(buildDir)
+            
+            zipRepository = new URL("https://example.com/repo/")
+            shouldUseZipsFromRepository = true
+
+            python "python-3.10.0", "3.10.0", "64", [], "example.patch" 
+        }
+        """
+
+        when:
+        GradleRunner.create()
+            .withProjectDir(testProjectDir.root)
+            .withArguments('build_envs')
+            .withPluginClasspath()
+            .build()
+
+        then:
+        def e = thrown(Exception.class)
+        e.message.contains("A patch is defined for a pre-built Python")
+    }
+
+    def "test apply patch"() {
+        given:
+        def patchContents ="""Index: README.rst
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/README.rst b/README.rst
+--- a/README.rst\t(revision 4641afef661e6a22bc64194bd334b161c95edfe2)
++++ b/README.rst\t(date 1634932856418)
+@@ -265,3 +265,5 @@
+ code but these are entirely optional.
+ 
+ All trademarks referenced herein are property of their respective holders.
++
++hello, world
+\\ No newline at end of file
+
+"""
+        File patchFile = testProjectDir.newFile("example.patch")
+        patchFile << patchContents
+        settingsFile << "rootProject.name = 'gradle-python-envs-test'"
+        buildFile << """
+        plugins {
+            id "com.jetbrains.python.envs"
+        }
+        
+        apply plugin: 'com.jetbrains.python.envs'
+        
+        envs {
+            bootstrapDirectory = new File(buildDir, 'bootstrap')
+            envsDirectory = file(buildDir)
+
+            python "python-3.10.0", "3.10.0", "64", [], "${patchFile.toURI()}"
+        }
+        """
+
+        when:
+        BuildResult result = GradleRunner.create()
+                .withProjectDir(testProjectDir.root)
+                .withArguments('build_envs')
+                .withPluginClasspath()
+                .build()
+
+        then:
+        println(result.output)
+        result.output.contains("patching file README.rst")
+        result.output.contains('BUILD SUCCESSFUL')
+        result.task(":build_envs").outcome == SUCCESS
+    }
 }

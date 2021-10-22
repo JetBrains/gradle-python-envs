@@ -1,11 +1,14 @@
 package com.jetbrains.python.envs
 
+import org.apache.tools.ant.filters.StringInputStream
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.util.VersionNumber
+
+import java.nio.file.Paths
 
 class PythonEnvsPlugin implements Plugin<Project> {
     private static String osName = System.getProperty('os.name').replaceAll(' ', '').with {
@@ -130,11 +133,22 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
             doLast {
                 project.logger.quiet("Creating $env.type '$env.name' at $env.envDir directory")
-
                 try {
                     project.exec {
                         executable new File(project.buildDir, "python-build/bin/python-build")
-                        args env.version, env.envDir
+                        if (env.patchFileUri != null) {
+                            project.logger.quiet("Applying patch from ${env.patchFileUri} to ${env.name}")
+                            if (Paths.get(env.patchFileUri).isAbsolute()) {
+                                standardInput = new FileInputStream(env.patchFileUri)
+                            }
+                            else {
+                                standardInput = new StringInputStream(new URI(env.patchFileUri).toURL().text)
+                            }
+                            args "-p", env.version, env.envDir
+                        }
+                        else {
+                            args env.version, env.envDir
+                        }
                     }
                     project.logger.quiet("Successfully")
                 }
