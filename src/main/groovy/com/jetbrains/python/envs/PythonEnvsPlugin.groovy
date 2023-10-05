@@ -23,7 +23,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
         final String arch = "$osName-x86${conda.is64 ? '_64' : ''}"
         final String ext = isWindows ? "exe" : "sh"
 
-        return new URL("https://repo.continuum.io/$repository/${conda.version}-$arch.$ext")
+        return new URL("https://repo.anaconda.com/$repository/${conda.version}-$arch.$ext")
     }
 
     private static File getExecutable(String executable, Python env = null, File dir = null, EnvType type = null) {
