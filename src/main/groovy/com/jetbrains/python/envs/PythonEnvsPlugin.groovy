@@ -17,13 +17,33 @@ class PythonEnvsPlugin implements Plugin<Project> {
 
     private static Boolean isWindows = Os.isFamily(Os.FAMILY_WINDOWS)
     private static Boolean isUnix = Os.isFamily(Os.FAMILY_UNIX)
+    private static Boolean isMacOsX = Os.isFamily(Os.FAMILY_MAC)
 
     private static URL getUrlToDownloadConda(Conda conda) {
         final String repository = (conda.version.toLowerCase().contains("miniconda")) ? "miniconda" : "archive"
-        final String arch = "$osName-x86${conda.is64 ? '_64' : ''}"
+        final String arch = getArch()
         final String ext = isWindows ? "exe" : "sh"
 
-        return new URL("https://repo.continuum.io/$repository/${conda.version}-$arch.$ext")
+        return new URL("https://repo.continuum.io/$repository/${conda.version}-$osName-$arch.$ext")
+    }
+
+    private static String getArch() {
+        def arch = System.getProperty("os.arch")
+        switch (arch) {
+            case ~/x86|i386|ia-32|i686/:
+                arch = "x86"
+                break
+            case ~/x86_64|amd64|x64|x86-64/:
+                arch = "x86_64"
+                break
+            case ~/arm|arm-v7|armv7|arm32/:
+                arch = "armv7l"
+                break
+            case ~/aarch64|arm64|arm-v8/:
+                arch = isMacOsX ? "arm64" : "aarch64"
+                break
+        }
+        return arch
     }
 
     private static File getExecutable(String executable, Python env = null, File dir = null, EnvType type = null) {
