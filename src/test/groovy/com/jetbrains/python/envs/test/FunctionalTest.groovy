@@ -511,7 +511,7 @@ diff --git a/README.rst b/README.rst
 \\ No newline at end of file
 
 """
-        File patchFile = testProjectDir.newFile("example.patch")
+        File patchFile = testProjectDir.resolve("example.patch").toFile()
         patchFile << patchContents
         settingsFile << "rootProject.name = 'gradle-python-envs-test'"
         buildFile << """
