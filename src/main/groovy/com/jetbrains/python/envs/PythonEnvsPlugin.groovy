@@ -19,6 +19,8 @@ class PythonEnvsPlugin implements Plugin<Project> {
     private static Boolean isUnix = Os.isFamily(Os.FAMILY_UNIX)
     private static Boolean isMacOsX = Os.isFamily(Os.FAMILY_MAC)
 
+    private static final String PIP_MINIMAL_SUPPORTED_VERSION = "3.9"
+
     private static URL getUrlToDownloadConda(Conda conda) {
         final String repository = (conda.version.toLowerCase().contains("miniconda")) ? "miniconda" : "archive"
         final String arch = getArch()
@@ -80,11 +82,24 @@ class PythonEnvsPlugin implements Plugin<Project> {
         return new File(dir ?: env.envDir, pathString)
     }
 
-    private static File getPipFile(Project project) {
-        new File(project.buildDir, "get-pip.py").with { file ->
+    private static File getPipFile(Project project, String versionStr) {
+        def version = VersionNumber.parse(versionStr)
+        String name
+        String remoteUrl
+        if (version < VersionNumber.parse(PIP_MINIMAL_SUPPORTED_VERSION)) {
+            // use version-specific script
+            def shortVersion = "${version.major}.${version.minor}"
+            name = "get-pip-${shortVersion}.py"
+            remoteUrl = "https://bootstrap.pypa.io/pip/3.8/get-pip.py"
+        } else {
+            name = "get-pip.py"
+            remoteUrl =  "https://bootstrap.pypa.io/get-pip.py"
+        }
+
+        new File(project.buildDir, name).with { file ->
             if (!file.exists()) {
                 project.ant.get(dest: file) {
-                    url(url: "https://bootstrap.pypa.io/get-pip.py")
+                    url(url: remoteUrl)
                 }
             }
             return file
@@ -230,7 +245,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                         project.logger.quiet("Downloading & installing pip and setuptools")
                         project.exec {
                             executable getExecutable("python", env)
-                            args getPipFile(project)
+                            args getPipFile(project, env.version)
                         }
                     }
                     // It's better to save installer for good uninstall
@@ -378,7 +393,7 @@ class PythonEnvsPlugin implements Plugin<Project> {
                                                 args "-m", "ensurepip"
                                             } else {
                                                 executable getExecutable("python", env)
-                                                args getPipFile(project)
+                                                args getPipFile(project, env.version)
                                             }
                                         }
                                     }
