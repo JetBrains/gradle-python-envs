@@ -1,23 +1,24 @@
 plugins {
     id 'idea'
     id 'groovy'
-    id 'com.gradle.plugin-publish' version '0.9.7'
-    id 'com.palantir.git-version' version '0.8.0'
-    id 'maven'
+    id 'com.gradle.plugin-publish' version '1.2.1'
+    id 'com.palantir.git-version' version '3.1.0'
+    id 'maven-publish'
     id 'java-gradle-plugin'
 }
 
 project.version = gitVersion()
 project.group = 'com.jetbrains.python'
 
-sourceCompatibility = '1.6'
-targetCompatibility = '1.6'
-
-repositories {
-    jcenter()
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
 }
 
-uploadArchives {
+repositories {
+    mavenCentral()
+}
+
+publishing {
     repositories {
         maven {
             url uri('../mvn_repo')
@@ -26,30 +27,37 @@ uploadArchives {
 }
 
 dependencies {
-    compile gradleApi()
+    implementation gradleApi()
+
     testImplementation(
             gradleTestKit(),
-            'junit:junit:4.12'
     )
-    testImplementation('org.spockframework:spock-core:1.1-groovy-2.4') {
+
+    testImplementation(platform('org.junit:junit-bom:5.10.3'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+
+    testImplementation('org.spockframework:spock-core:2.4-M4-groovy-3.0') {
         exclude module: 'groovy-all'
     }
 }
 
-pluginBundle {
+gradlePlugin {
     website = 'https://github.com/JetBrains/gradle-python-envs'
     vcsUrl = 'https://github.com/JetBrains/gradle-python-envs'
-    description = 'Gradle plugin to install different Python environments'
-    tags = ['python', 'miniconda', 'conda']
     plugins {
         pythonEnvsPlugin {
             id = 'com.jetbrains.python.envs'
+            implementationClass = 'com.jetbrains.python.envs.PythonEnvsPlugin'
             displayName = 'Gradle Python Envs plugin'
+            description = 'Gradle plugin to install different Python environments'
+            tags.set(['python', 'miniconda', 'conda'])
         }
     }
 }
 
 test {
+    useJUnitPlatform()
     testLogging {
         showCauses = true
         showExceptions = true

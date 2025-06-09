@@ -2,8 +2,10 @@ package com.jetbrains.python.envs.test
 
 import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.GradleRunner
-import org.junit.Rule
-import org.junit.rules.TemporaryFolder
+import spock.lang.TempDir
+
+import java.nio.file.Files
+import java.nio.file.Path
 import spock.lang.Requires
 import spock.lang.Specification
 
@@ -11,14 +13,14 @@ import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
 import static org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 
 class FunctionalTest extends Specification {
-    @Rule
-    TemporaryFolder testProjectDir = new TemporaryFolder()
+    @TempDir
+    Path testProjectDir
     File settingsFile
     File buildFile
 
     def setup() {
-        settingsFile = testProjectDir.newFile('settings.gradle')
-        buildFile = testProjectDir.newFile('build.gradle')
+        settingsFile = Files.createFile(testProjectDir.resolve('settings.gradle')).toFile()
+        buildFile = Files.createFile(testProjectDir.resolve('build.gradle')).toFile()
     }
 
     def "install python 2.7.15 and virtualenv"() {
@@ -41,7 +43,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -73,7 +75,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -105,7 +107,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -136,7 +138,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -167,7 +169,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -197,7 +199,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -227,7 +229,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -257,7 +259,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -287,7 +289,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -318,7 +320,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -350,7 +352,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -382,7 +384,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -413,7 +415,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -445,7 +447,7 @@ class FunctionalTest extends Specification {
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
@@ -480,7 +482,7 @@ class FunctionalTest extends Specification {
 
         when:
         GradleRunner.create()
-            .withProjectDir(testProjectDir.root)
+            .withProjectDir(testProjectDir.toFile())
             .withArguments('build_envs')
             .withPluginClasspath()
             .build()
@@ -529,7 +531,7 @@ diff --git a/README.rst b/README.rst
 
         when:
         BuildResult result = GradleRunner.create()
-                .withProjectDir(testProjectDir.root)
+                .withProjectDir(testProjectDir.toFile())
                 .withArguments('build_envs')
                 .withPluginClasspath()
                 .build()
